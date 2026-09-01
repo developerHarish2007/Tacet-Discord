@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from perception.agent import PerceptionAgent
@@ -38,7 +39,7 @@ verifier_agent = VerifierAgent(
 )
 coordinator_agent = CoordinatorAgent(verifier_agent=verifier_agent)
 
-# Static file serving
+# Static file paths
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 uploads_dir = os.path.join(os.path.dirname(__file__), "data", "uploads")
 heatmaps_dir = os.path.join(os.path.dirname(__file__), "heatmaps")
@@ -55,9 +56,22 @@ if os.path.exists(heatmaps_dir):
 async def root():
     index_path = os.path.join(static_dir, "index.html")
     if os.path.exists(index_path):
-        from fastapi.responses import FileResponse
         return FileResponse(index_path)
     return {"message": "Welcome to TACET DISCORD Multi-Agent API"}
+
+@app.get("/styles.css")
+async def get_styles():
+    css_path = os.path.join(static_dir, "styles.css")
+    if os.path.exists(css_path):
+        return FileResponse(css_path, media_type="text/css")
+    raise HTTPException(status_code=404, detail="CSS file not found")
+
+@app.get("/app.js")
+async def get_app_js():
+    js_path = os.path.join(static_dir, "app.js")
+    if os.path.exists(js_path):
+        return FileResponse(js_path, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="JS file not found")
 
 @app.get("/health")
 async def health():
