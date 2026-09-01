@@ -266,7 +266,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // -------------------------------------------------------------
     // SUBMIT SENIOR ADD RECORD (/records/add)
     // -------------------------------------------------------------
-    async function handleSeniorAddSubmit() {
     // Microphone recording state for Senior Add
     const seniorAddAudioFile = document.getElementById('senior-add-audio-file');
     const seniorVoiceRecBtn = document.getElementById('senior-voice-rec-btn');
