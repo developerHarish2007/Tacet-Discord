@@ -145,13 +145,21 @@ class CoordinatorAgent:
         tier = verify_junior_res["tier"]
         has_hallucination = verify_junior_res["has_hallucination"]
 
+        cross_modal_note = None
+        if percept_res and retrieved_records and verify_junior_res["highest_similarity"] >= 0.35:
+            rec_id = retrieved_records[0]["id"]
+            sim_pct = int(verify_junior_res["highest_similarity"] * 100)
+            cross_modal_note = f"💡 Multi-Modal Alignment: Grounded primarily via text query match against Record #{rec_id} ({sim_pct}% similarity). Image scan generated spatial heatmap."
+
         # Build reasoning trace including raw LLM output for Pipeline Trace tab
         reasoning_trace = {
             "perception": {
                 "score": percept_res.get("anomaly_score", 0.0) if percept_res else None,
                 "confidence": percept_res.get("mean_confidence", 0.0) if percept_res else None,
+                "extracted_ocr": percept_res.get("extracted_text", "") if percept_res else "",
                 "summary": f"Perception: Score {percept_res['mean_confidence']:.2f}" if percept_res else "No image provided for visual scan"
             },
+            "cross_modal_note": cross_modal_note,
             "memory": {
                 "retrieved_count": len(retrieved_records),
                 "top_similarity": retrieved_records[0]["similarity_score"] if retrieved_records else 0.0,
