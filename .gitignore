@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data download archives
+data/mvtec/*.tar.xz
+data/uploads/*
+!data/uploads/.gitkeep
+memory/*.db-journal
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE / OS metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
