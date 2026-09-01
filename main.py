@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional
 from perception.agent import PerceptionAgent
 from correlation.agent import CorrelationAgent
 from memory.agent import MemoryAgent
+from verifier.agent import VerifierAgent
 
 app = FastAPI(
     title="TACET DISCORD API",
@@ -35,6 +36,11 @@ os.makedirs(os.path.join(static_dir, "heatmaps"), exist_ok=True)
 perception_agent = PerceptionAgent(static_dir=static_dir)
 correlation_agent = CorrelationAgent()
 memory_agent = MemoryAgent()
+verifier_agent = VerifierAgent(
+    perception_agent=perception_agent,
+    correlation_agent=correlation_agent,
+    memory_agent=memory_agent
+)
 
 class CorrelateRequest(BaseModel):
     telemetry_mode: Optional[str] = "normal"
@@ -47,6 +53,10 @@ class RememberRequest(BaseModel):
     heatmap_path: Optional[str] = None
     voice_note_path: Optional[str] = None
     confidence_at_capture: Optional[float] = 0.85
+
+class VerifyRequest(BaseModel):
+    image_path: Optional[str] = None
+    telemetry_mode: Optional[str] = "normal"
 
 @app.get("/health")
 def health_check():
@@ -75,8 +85,7 @@ async def perceive(file: Optional[UploadFile] = File(None), image_path: Optional
         raise HTTPException(status_code=400, detail=f"Image file not found at {target_path}")
 
     try:
-        result = perception_agent.perceive(target_path)
-        return result
+        return perception_agent.perceive(target_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Perception agent analysis failed: {str(e)}")
 
@@ -84,22 +93,16 @@ async def perceive(file: Optional[UploadFile] = File(None), image_path: Optional
 async def correlate(req: CorrelateRequest):
     """Correlation Agent Endpoint"""
     try:
-        result = correlation_agent.correlate(
+        return correlation_agent.correlate(
             telemetry_mode=req.telemetry_mode,
             perception_score=req.perception_score
         )
-        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Correlation agent analysis failed: {str(e)}")
 
 @app.post("/recall")
 async def recall(file: Optional[UploadFile] = File(None), image_path: Optional[str] = Form(None)):
-    """
-    Memory Agent Recall Endpoint:
-    Accepts image file upload or image_path.
-    Returns single best match (all fields) and cosine similarity strength score.
-    Returns match: null if similarity < 0.30.
-    """
+    """Memory Agent Recall Endpoint"""
     target_path = None
     if file:
         file_ext = os.path.splitext(file.filename)[1] or ".png"
@@ -116,19 +119,15 @@ async def recall(file: Optional[UploadFile] = File(None), image_path: Optional[s
         raise HTTPException(status_code=400, detail=f"Image file not found at {target_path}")
 
     try:
-        result = memory_agent.recall(target_path)
-        return result
+        return memory_agent.recall(target_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Memory agent recall failed: {str(e)}")
 
 @app.post("/remember")
 async def remember(req: RememberRequest):
-    """
-    Memory Agent Remember Endpoint:
-    Accepts a new senior-confirmed incident and inserts it into SQLite store with seeded: False.
-    """
+    """Memory Agent Remember Endpoint"""
     try:
-        result = memory_agent.remember(
+        return memory_agent.remember(
             image_path=req.image_path,
             confirmed_diagnosis=req.confirmed_diagnosis,
             fix_steps=req.fix_steps,
@@ -136,35 +135,43 @@ async def remember(req: RememberRequest):
             voice_note_path=req.voice_note_path,
             confidence_at_capture=req.confidence_at_capture or 0.85
         )
-        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Memory agent remember failed: {str(e)}")
 
 @app.post("/verify")
-async def verify(payload: Dict[str, Any] = {}):
-    return {
-        "agent": "Verifier Agent",
-        "status": "placeholder",
-        "tier": "Tier 3",
-        "approved": False,
-        "reasoning": "Verifier placeholder waiting for multi-agent inputs",
-        "message": "Verifier agent ready for implementation in Phase 5"
-    }
+async def verify(file: Optional[UploadFile] = File(None), image_path: Optional[str] = Form(None), telemetry_mode: Optional[str] = Form("normal")):
+    """
+    Verifier Agent Endpoint:
+    Accepts image and telemetry stream reference.
+    Cross-examines Perception, Correlation, and Memory outputs.
+    Returns JSON with tier (1, 2, 3), reasoning, auditable values, and stage_b_tiebreaker.
+    """
+    target_path = None
+    if file:
+        file_ext = os.path.splitext(file.filename)[1] or ".png"
+        filename = f"verify_{uuid.uuid4().hex[:8]}{file_ext}"
+        target_path = os.path.join(uploads_dir, filename)
+        with open(target_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    elif image_path:
+        target_path = image_path
+    else:
+        target_path = os.path.join(base_dir, "data", "mvtec", "bottle", "test", "broken_large", "000.png")
+
+    if not os.path.exists(target_path):
+        raise HTTPException(status_code=400, detail=f"Image file not found at {target_path}")
+
+    try:
+        return verifier_agent.verify(image_path=target_path, telemetry_mode=telemetry_mode or "normal")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Verifier analysis failed: {str(e)}")
 
 @app.post("/ask")
 async def ask(payload: Dict[str, Any] = {}):
-    return {
-        "agent": "Coordinator Agent",
-        "status": "placeholder",
-        "final_response": {
-            "tier": "Tier 3",
-            "tier_label": "No Confident Match - Redirection to Senior Technician Required",
-            "perception": None,
-            "correlation": None,
-            "memory": None,
-            "verifier_criticism": "System operating with default baseline phase 1 configuration."
-        }
-    }
+    """Coordinator / Multi-Agent Pipeline Endpoint"""
+    image_path = payload.get("image_path") or os.path.join(base_dir, "data", "mvtec", "bottle", "test", "broken_large", "000.png")
+    telemetry_mode = payload.get("telemetry_mode", "normal")
+    return verifier_agent.verify(image_path=image_path, telemetry_mode=telemetry_mode)
 
 # Mount static directories
 app.mount("/heatmaps", StaticFiles(directory=os.path.join(static_dir, "heatmaps")), name="heatmaps")

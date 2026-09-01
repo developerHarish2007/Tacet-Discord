@@ -51,76 +51,91 @@ document.addEventListener('DOMContentLoaded', () => {
     if (runPipelineBtn) {
         runPipelineBtn.addEventListener('click', async () => {
             runPipelineBtn.disabled = true;
-            runPipelineBtn.querySelector('span').textContent = 'Evaluating 5 Agents...';
-
-            let perceptionScore = null;
+            runPipelineBtn.querySelector('span').textContent = 'Evaluating 5-Agent Cross-Verification...';
 
             try {
-                // 1. Perception Step
+                const selectedMode = telemetrySelect ? telemetrySelect.value : 'normal';
                 const formData = new FormData();
                 if (selectedFile) {
                     formData.append('file', selectedFile);
                 }
+                formData.append('telemetry_mode', selectedMode);
 
-                const perceptRes = await fetch('/perceive', { method: 'POST', body: formData });
-                if (perceptRes.ok) {
-                    const perceptData = await perceptRes.json();
-                    perceptionScore = perceptData.anomaly_score;
-                    
-                    document.getElementById('percept-score').textContent = perceptData.anomaly_score.toFixed(4);
-                    document.getElementById('percept-confidence').textContent = (perceptData.mean_confidence * 100).toFixed(1) + '%';
-                    document.getElementById('percept-uncertainty').textContent = `±${perceptData.variance.toFixed(6)}`;
-                    document.getElementById('perception-status').textContent = 'Evaluated';
+                const verifyRes = await fetch('/verify', { method: 'POST', body: formData });
+                if (verifyRes.ok) {
+                    const verifyData = await verifyRes.json();
+                    const outputs = verifyData.agent_outputs || {};
+                    const percept = outputs.perception || {};
+                    const correl = outputs.correlation || {};
+                    const memory = outputs.memory || {};
 
-                    if (perceptData.heatmap_path) {
-                        const heatmapContainer = document.getElementById('heatmap-container');
-                        const heatmapImg = document.getElementById('heatmap-img');
-                        heatmapImg.src = perceptData.heatmap_path;
-                        heatmapContainer.style.display = 'block';
+                    // 1. Update Perception UI Panel
+                    if (percept.anomaly_score !== undefined) {
+                        document.getElementById('percept-score').textContent = percept.anomaly_score.toFixed(4);
+                        document.getElementById('percept-confidence').textContent = (percept.mean_confidence * 100).toFixed(1) + '%';
+                        document.getElementById('percept-uncertainty').textContent = `±${percept.variance.toFixed(6)}`;
+                        document.getElementById('perception-status').textContent = 'Evaluated';
+
+                        if (percept.heatmap_path) {
+                            const heatmapContainer = document.getElementById('heatmap-container');
+                            const heatmapImg = document.getElementById('heatmap-img');
+                            heatmapImg.src = percept.heatmap_path;
+                            heatmapContainer.style.display = 'block';
+                        }
                     }
-                }
 
-                // 2. Correlation Step
-                const selectedMode = telemetrySelect ? telemetrySelect.value : 'normal';
-                const correlRes = await fetch('/correlate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        telemetry_mode: selectedMode,
-                        perception_score: perceptionScore
-                    })
-                });
-
-                if (correlRes.ok) {
-                    const correlData = await correlRes.json();
-                    document.getElementById('correl-rul').textContent = `${correlData.predicted_rul_hours} hrs`;
-                    document.getElementById('correl-shap').textContent = correlData.top_contributing_feature;
-                    document.getElementById('correlation-status').textContent = correlData.sensor_anomaly ? 'Anomaly' : 'Normal';
-
-                    if (!correlData.agrees_with_perception) {
-                        document.getElementById('verifier-notes').textContent = correlData.disagreement_reason;
+                    // 2. Update Correlation UI Panel
+                    if (correl.predicted_rul_hours !== undefined) {
+                        document.getElementById('correl-rul').textContent = `${correl.predicted_rul_hours} hrs`;
+                        document.getElementById('correl-shap').textContent = correl.top_contributing_feature || '--';
+                        document.getElementById('correlation-status').textContent = correl.sensor_anomaly ? 'Anomaly' : 'Normal';
                     }
-                }
 
-                // 3. Memory Step (Recall)
-                const recallFormData = new FormData();
-                if (selectedFile) {
-                    recallFormData.append('file', selectedFile);
-                }
+                    // 3. Update Memory UI Panel
+                    if (memory.similarity_score !== undefined) {
+                        document.getElementById('memory-similarity').textContent = `${(memory.similarity_score * 100).toFixed(1)}% Cosine`;
+                        if (memory.match) {
+                            const tag = memory.match.seeded ? " [Seeded Demo Data]" : " [Senior Confirmed]";
+                            document.getElementById('memory-status').textContent = `Match ID #${memory.match.id}${tag}`;
+                        } else {
+                            document.getElementById('memory-status').textContent = "No Match (<30%)";
+                        }
+                    }
 
-                const recallRes = await fetch('/recall', { method: 'POST', body: recallFormData });
-                if (recallRes.ok) {
-                    const recallData = await recallRes.json();
-                    document.getElementById('memory-similarity').textContent = `${(recallData.similarity_score * 100).toFixed(1)}% Cosine`;
+                    // 4. Update Skeptical Verifier Ruling Card
+                    const verdictBanner = document.getElementById('verdict-banner');
+                    const verdictTier = document.getElementById('verdict-tier');
+                    const verdictTitle = document.getElementById('verdict-title');
+                    const verdictDesc = document.getElementById('verdict-desc');
+                    const verifierNotes = document.getElementById('verifier-notes');
+                    const seniorNoteBox = document.getElementById('senior-note-box');
+
+                    verdictBanner.className = `verdict-banner tier-${verifyData.tier}`;
+                    verdictTier.textContent = `TIER ${verifyData.tier}`;
+                    verdictTitle.textContent = verifyData.tier_label;
+                    verdictDesc.textContent = verifyData.reasoning;
                     
-                    if (recallData.match) {
-                        const tag = recallData.match.seeded ? " [Seeded Demo Data]" : " [Senior Confirmed]";
-                        document.getElementById('memory-status').textContent = `Match ID #${recallData.match.id}${tag}`;
+                    let auditText = `Auditable Values:\n` +
+                        `• Visual Confidence: ${(verifyData.auditable_values.mean_confidence * 100).toFixed(1)}%\n` +
+                        `• Dropout Variance: ±${verifyData.auditable_values.variance.toFixed(6)}\n` +
+                        `• Sensor Agreement: ${verifyData.auditable_values.agrees_with_perception}\n` +
+                        `• Memory Similarity: ${(verifyData.auditable_values.similarity_score * 100).toFixed(1)}%\n`;
+
+                    if (verifyData.stage_b_tiebreaker && verifyData.stage_b_tiebreaker.negotiation_needed) {
+                        auditText += `\n${verifyData.stage_b_tiebreaker.tiebreaker_summary}`;
+                    }
+
+                    verifierNotes.textContent = auditText;
+
+                    // Display senior voice note / diagnosis if available
+                    if (memory.match && (memory.match.confirmed_diagnosis || memory.match.voice_note_path)) {
+                        document.getElementById('senior-audio-text').textContent = 
+                            `"${memory.match.confirmed_diagnosis}"\nSteps: ${memory.match.fix_steps}`;
+                        seniorNoteBox.style.display = 'block';
                     } else {
-                        document.getElementById('memory-status').textContent = "No Match (<30%)";
+                        seniorNoteBox.style.display = 'none';
                     }
                 }
-
             } catch (err) {
                 console.error("Pipeline trigger failed:", err);
             } finally {
