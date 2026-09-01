@@ -1,6 +1,8 @@
 import os
 import re
 import json
+import shutil
+import subprocess
 from typing import Tuple, Dict, Any, Optional
 
 class VoiceTranscriber:
@@ -11,18 +13,25 @@ class VoiceTranscriber:
     """
     def __init__(self):
         self._whisper_model = None
+        self._setup_ffmpeg()
+
+    def _setup_ffmpeg(self):
+        """Ensures ffmpeg.exe is in PATH for Whisper on Windows"""
+        try:
+            import imageio_ffmpeg
+            ff_path = imageio_ffmpeg.get_ffmpeg_exe()
+            ff_dir = os.path.dirname(ff_path)
+            target_exe = os.path.join(ff_dir, "ffmpeg.exe")
+            if not os.path.exists(target_exe):
+                shutil.copyfile(ff_path, target_exe)
+            if ff_dir not in os.environ.get("PATH", ""):
+                os.environ["PATH"] = ff_dir + os.pathsep + os.environ.get("PATH", "")
+        except Exception as e:
+            print(f"FFmpeg setup note: {e}")
 
     def _get_whisper_model(self):
         if self._whisper_model is None:
-            try:
-                import imageio_ffmpeg
-                ff_path = imageio_ffmpeg.get_ffmpeg_exe()
-                ff_dir = os.path.dirname(ff_path)
-                if ff_dir not in os.environ.get("PATH", ""):
-                    os.environ["PATH"] += os.pathsep + ff_dir
-            except Exception:
-                pass
-
+            self._setup_ffmpeg()
             try:
                 import whisper
                 print("Loading local Whisper model (tiny.en)...")
@@ -43,9 +52,10 @@ class VoiceTranscriber:
                 res = model.transcribe(audio_path)
                 text = res.get("text", "").strip()
                 if text:
+                    print(f"Whisper transcribed successfully: '{text}'")
                     return text
             except Exception as e:
-                print(f"Whisper transcription failed ({e}); checking fallback.")
+                print(f"Whisper transcription error: {e}")
 
         # SpeechRecognition fallback if whisper fails or non-wav format
         try:
@@ -53,7 +63,9 @@ class VoiceTranscriber:
             r = sr.Recognizer()
             with sr.AudioFile(audio_path) as source:
                 audio = r.record(source)
-                return r.recognize_google(audio)
+                text = r.recognize_google(audio).strip()
+                if text:
+                    return text
         except Exception:
             pass
 
@@ -72,7 +84,7 @@ class VoiceTranscriber:
         confirmed_diagnosis = "Senior Voice Note Assessment"
         fix_steps = raw_transcript
 
-        if llm_engine and raw_transcript and len(raw_transcript) > 10:
+        if llm_engine and raw_transcript and len(raw_transcript) > 5 and not raw_transcript.startswith("Voice note captured"):
             prompt = (
                 "You are an industrial expert AI. A senior technician recorded this voice note during shift handoff:\n"
                 f"\"{raw_transcript}\"\n\n"
@@ -95,6 +107,9 @@ class VoiceTranscriber:
                     fix_steps = parsed.get("fix_steps", fix_steps)
             except Exception as e:
                 print(f"Gemma 4 voice cleaning note: {e}")
+        elif raw_transcript and not raw_transcript.startswith("Voice note captured"):
+            confirmed_diagnosis = raw_transcript
+            fix_steps = f"Voice Recording Handoff Notes: '{raw_transcript}'"
 
         return {
             "raw_transcript": raw_transcript,
