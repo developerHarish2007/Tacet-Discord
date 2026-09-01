@@ -1,4 +1,4 @@
-# TACET DISCORD 🛡️⚡
+# TACET DISCORD 🧾
 > **Shift-Handoff Copilot & Factory Incident Intelligence Framework**  
 > *Preserving Senior Technician Tribal Knowledge with Active Evidence Gathering, Local Gemma 4 Reasoning, and Multi-Agent Hallucination Verification.*
 
