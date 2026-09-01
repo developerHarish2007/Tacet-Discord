@@ -1,5 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     const backendStatus = document.getElementById('backend-status');
+    const factoryStateBadge = document.getElementById('factory-state-badge');
+    const factoryModeText = document.getElementById('factory-mode-text');
+    const factoryIncidentCount = document.getElementById('factory-incident-count');
+
     const runPipelineBtn = document.getElementById('run-pipeline-btn');
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
@@ -23,6 +27,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const seniorSaveBtn = document.getElementById('senior-save-btn');
     const seniorCorrectionForm = document.getElementById('senior-correction-form');
     const seniorStatusMsg = document.getElementById('senior-status-msg');
+
+    // Investigation Controls
+    const investigationCard = document.getElementById('investigation-card');
+    const sufficiencyBadge = document.getElementById('sufficiency-badge');
+    const hypothesesList = document.getElementById('hypotheses-list');
+    const nextEvidenceLabel = document.getElementById('next-evidence-label');
+    const nextEvidenceReason = document.getElementById('next-evidence-reason');
+    const acquireEvidenceBtn = document.getElementById('acquire-evidence-btn');
+    const investigationTransitionBox = document.getElementById('investigation-transition-box');
+    const transitionSummaryText = document.getElementById('transition-summary-text');
 
     let selectedFile = null;
     let currentImagePath = "data/mvtec/bottle/test/broken_large/000.png";
@@ -81,8 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Check Backend Health
-    async function checkHealth() {
+    // Check Backend Health & Factory Onboarding State
+    async function checkHealthAndFactoryState() {
         try {
             const res = await fetch('/health');
             if (res.ok) {
@@ -92,12 +106,19 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 backendStatus.textContent = 'Backend Offline';
             }
+
+            const stateRes = await fetch('/factory-state');
+            if (stateRes.ok) {
+                const stateData = await stateRes.json();
+                factoryModeText.textContent = stateData.factory_mode_label;
+                factoryIncidentCount.textContent = `${stateData.confirmed_factory_incidents} Confirmed Precedents`;
+            }
         } catch (e) {
             backendStatus.textContent = 'Backend Offline';
         }
     }
 
-    checkHealth();
+    checkHealthAndFactoryState();
 
     // Preset Handlers
     if (presetTier1) {
@@ -105,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedFile = null;
             currentImagePath = "data/mvtec/bottle/test/broken_large/000.png";
             setActivePreset(presetTier1);
-            document.getElementById('file-label').textContent = "Preset 1: Defect Photo (Broken Bottle)";
+            document.getElementById('file-label').textContent = "Scenario 1: Defect + Spiking Telemetry";
             telemetrySelect.value = "degraded";
             runPipeline();
         });
@@ -114,9 +135,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (presetTier2) {
         presetTier2.addEventListener('click', () => {
             selectedFile = null;
-            currentImagePath = "data/mvtec/bottle/test/broken_large/000.png";
+            currentImagePath = "data/mvtec/bottle/test/broken_large/001.png";
             setActivePreset(presetTier2);
-            document.getElementById('file-label').textContent = "Preset 2: Visual Scratch vs Normal Telemetry";
+            document.getElementById('file-label').textContent = "Scenario 2: Visual Scratch vs Flat Baseline";
             telemetrySelect.value = "normal";
             runPipeline();
         });
@@ -127,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedFile = null;
             currentImagePath = "data/mvtec/bottle/test/good/001.png";
             setActivePreset(presetTier3);
-            document.getElementById('file-label').textContent = "Preset 3: Healthy Pass (Low Anomaly)";
+            document.getElementById('file-label').textContent = "Scenario 3: Cold Start / Low Confidence";
             telemetrySelect.value = "normal";
             runPipeline();
         });
@@ -158,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await askRes.json();
                 console.log("[NETWORK RESP] POST /ask returned:", data);
                 
-                // Update currentImagePath to match backend response image_path (critical for custom uploads)
                 if (data.image_path) {
                     currentImagePath = data.image_path;
                 }
@@ -175,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Render Junior View & High-Impact Reasoning Trace
+    // Render Junior View, High-Impact Trace, and Active Evidence Gathering Card
     function renderJuniorView(data) {
         const trace = data.reasoning_trace || {};
         const pTrace = trace.perception || {};
@@ -183,6 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mTrace = trace.memory || {};
         const vTrace = trace.verifier || {};
         const traceCard = document.querySelector('.trace-card');
+        const investigation = data.investigation || {};
 
         // Check if conflict occurred
         const isConflict = cTrace.agrees === false;
@@ -217,7 +238,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.getElementById('trace-verifier-desc').textContent = vTrace.reasoning || data.verifier_reasoning;
 
-        // 2. Verdict Banner
+        // 2. Render Active Evidence Gathering Engine Card
+        if (investigationCard) {
+            investigationCard.style.display = 'block';
+            investigationTransitionBox.style.display = 'none';
+
+            const sufficiency = investigation.evidence_sufficiency || "LOW";
+            sufficiencyBadge.textContent = `Sufficiency: ${sufficiency}`;
+            if (sufficiency === "HIGH") {
+                sufficiencyBadge.className = "sufficiency-badge high";
+            } else {
+                sufficiencyBadge.className = "sufficiency-badge";
+            }
+
+            // Hypotheses List
+            const hypotheses = investigation.hypotheses || [];
+            hypothesesList.innerHTML = hypotheses.map(h => `
+                <div class="hypothesis-item">
+                    <span>${h.cause}</span>
+                    <div class="hypo-bar-bg">
+                        <div class="hypo-bar-fill" style="width: ${(h.probability*100).toFixed(0)}%"></div>
+                    </div>
+                    <strong>${(h.probability*100).toFixed(0)}%</strong>
+                </div>
+            `).join('');
+
+            // Next-Best Evidence Recommendation
+            const topRec = investigation.top_recommendation || {};
+            nextEvidenceLabel.textContent = topRec.label || "10-Second Vibration Sample (Bearing Accelerometer)";
+            nextEvidenceReason.textContent = `Expected Uncertainty Reduction: ${(topRec.expected_uncertainty_reduction || 0.45)*100}% | Relevance: ${(topRec.relevance || 0.9)*100}%`;
+        }
+
+        // 3. Verdict Banner
         const verdictBanner = document.getElementById('verdict-banner');
         const verdictTier = document.getElementById('verdict-tier');
         const verdictTitle = document.getElementById('verdict-title');
@@ -228,12 +280,12 @@ document.addEventListener('DOMContentLoaded', () => {
         verdictTitle.textContent = data.tier_label;
         verdictDesc.textContent = data.verifier_reasoning;
 
-        // 3. Hide all tier container views first
+        // 4. Hide all tier container views first
         document.getElementById('tier1-container').style.display = 'none';
         document.getElementById('tier2-container').style.display = 'none';
         document.getElementById('tier3-container').style.display = 'none';
 
-        // 4. Render specified Tier container view
+        // 5. Render specified Tier container view
         if (data.tier === 1) {
             document.getElementById('tier1-container').style.display = 'block';
             document.getElementById('t1-diagnosis').textContent = data.confirmed_diagnosis || '--';
@@ -261,6 +313,46 @@ document.addEventListener('DOMContentLoaded', () => {
             heatmapImg.src = data.heatmap_path;
             heatmapContainer.style.display = 'block';
         }
+    }
+
+    // Active Evidence Acquisition Handler (POST /acquire)
+    if (acquireEvidenceBtn) {
+        acquireEvidenceBtn.addEventListener('click', async () => {
+            acquireEvidenceBtn.disabled = true;
+            acquireEvidenceBtn.querySelector('span').textContent = 'Acquiring Target Evidence & Re-Evaluating...';
+
+            try {
+                const res = await fetch('/acquire', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image_path: currentImagePath,
+                        evidence_id: 'vibration_sample_10s'
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    console.log("[NETWORK RESP] POST /acquire returned:", data);
+
+                    // Render Investigation Transition
+                    investigationTransitionBox.style.display = 'block';
+                    transitionSummaryText.textContent = data.transition_summary;
+
+                    sufficiencyBadge.textContent = "Sufficiency: HIGH";
+                    sufficiencyBadge.className = "sufficiency-badge high";
+
+                    // Re-run full ask pipeline with degraded telemetry to show upgraded tier live
+                    telemetrySelect.value = "degraded";
+                    runPipeline();
+                }
+            } catch (err) {
+                console.error("Acquire evidence failed:", err);
+            } finally {
+                acquireEvidenceBtn.disabled = false;
+                acquireEvidenceBtn.querySelector('span').textContent = '⚡ ACQUIRE NEXT BEST EVIDENCE (Execute Investigation Loop)';
+            }
+        });
     }
 
     // Populate Senior Handoff Panel
@@ -352,6 +444,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 seniorStatusMsg.textContent = `✅ Saved to incident memory! (Incident Record ID #${data.id}, seeded: false)`;
                 seniorStatusMsg.style.display = 'block';
                 seniorSaveBtn.style.display = 'none';
+
+                // Refresh factory state badge
+                checkHealthAndFactoryState();
             }
         } catch (err) {
             console.error("Save senior incident failed:", err);
