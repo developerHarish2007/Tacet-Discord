@@ -150,7 +150,13 @@ body {
     transition: all 0.2s;
 }
 
-.preset-btn:hover, .preset-btn.highlight {
+.preset-btn:hover {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+.preset-btn.active {
     background: rgba(251, 191, 36, 0.25);
     border-color: var(--accent-amber);
     color: var(--accent-amber);

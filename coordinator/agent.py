@@ -40,7 +40,7 @@ class CoordinatorAgent:
                 "similarity": memory.get("similarity_score", 0.0),
                 "has_match": match is not None,
                 "matched_diagnosis": match.get("confirmed_diagnosis") if match else None,
-                "summary": f"Cosine similarity {memory.get('similarity_score', 0.0)*100:.1f}% against incident DB"
+                "summary": f"Cosine similarity {memory.get('similarity_score', 0.0)*100:.1f}% against incident DB" if match else "No match in incident memory (<30% similarity)"
             },
             "verifier": {
                 "tier": tier,
@@ -65,11 +65,16 @@ class CoordinatorAgent:
             }
         elif tier == 2:
             # Tier 2 response: tentative diagnosis + UNCONFIRMED flag + who_to_ask + reasoning
-            tentative = match.get("confirmed_diagnosis") if match else "Tentative Visual Anomaly Detected (Unconfirmed)"
+            if match:
+                tentative = f"TENTATIVE (Historical Similarity {memory.get('similarity_score', 0.0)*100:.0f}%): {match.get('confirmed_diagnosis')}"
+            else:
+                tentative = "TENTATIVE: New/Unseen Visual Anomaly Pattern (No Prior Incident Match)"
+                
             return {
                 "tier": 2,
                 "tier_label": "Tier 2: Unconfirmed / Tentative Diagnosis",
-                "tentative_diagnosis": f"TENTATIVE: {tentative}",
+                "image_path": image_path,
+                "tentative_diagnosis": tentative,
                 "unconfirmed": True,
                 "who_to_ask": "Senior Tech on shift (Lead Specialist)",
                 "heatmap_path": percept.get("heatmap_path"),
@@ -82,6 +87,7 @@ class CoordinatorAgent:
             return {
                 "tier": 3,
                 "tier_label": "Tier 3: No Match - Safe Redirection Required",
+                "image_path": image_path,
                 "redirect_message": "Not confident enough — escalate to a senior technician",
                 "verifier_reasoning": reasoning,
                 "reasoning_trace": reasoning_trace,

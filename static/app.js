@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const presetTier1 = document.getElementById('preset-tier1');
     const presetTier2 = document.getElementById('preset-tier2');
     const presetTier3 = document.getElementById('preset-tier3');
+    const allPresets = [presetTier1, presetTier2, presetTier3];
 
     // Tabs
     const tabJunior = document.getElementById('tab-junior');
@@ -26,6 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedFile = null;
     let currentImagePath = "data/mvtec/bottle/test/broken_large/000.png";
     let lastPipelineResult = null;
+
+    function setActivePreset(activeBtn) {
+        allPresets.forEach(btn => {
+            if (btn) btn.classList.remove('active');
+        });
+        if (activeBtn) activeBtn.classList.add('active');
+    }
 
     // Tab Switching
     if (tabJunior && tabSenior) {
@@ -51,7 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 selectedFile = e.target.files[0];
-                document.getElementById('file-label').textContent = `Selected: ${selectedFile.name}`;
+                setActivePreset(null);
+                document.getElementById('file-label').textContent = `Uploaded Custom File: ${selectedFile.name}`;
             }
         });
         dropZone.addEventListener('dragover', (e) => {
@@ -66,7 +75,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.dataTransfer.files.length > 0) {
                 selectedFile = e.dataTransfer.files[0];
                 fileInput.files = e.dataTransfer.files;
-                document.getElementById('file-label').textContent = `Selected: ${selectedFile.name}`;
+                setActivePreset(null);
+                document.getElementById('file-label').textContent = `Uploaded Custom File: ${selectedFile.name}`;
             }
         });
     }
@@ -94,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         presetTier1.addEventListener('click', () => {
             selectedFile = null;
             currentImagePath = "data/mvtec/bottle/test/broken_large/000.png";
+            setActivePreset(presetTier1);
             document.getElementById('file-label').textContent = "Preset 1: Defect Photo (Broken Bottle)";
             telemetrySelect.value = "degraded";
             runPipeline();
@@ -104,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         presetTier2.addEventListener('click', () => {
             selectedFile = null;
             currentImagePath = "data/mvtec/bottle/test/broken_large/000.png";
+            setActivePreset(presetTier2);
             document.getElementById('file-label').textContent = "Preset 2: Visual Scratch vs Normal Telemetry";
             telemetrySelect.value = "normal";
             runPipeline();
@@ -114,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         presetTier3.addEventListener('click', () => {
             selectedFile = null;
             currentImagePath = "data/mvtec/bottle/test/good/001.png";
+            setActivePreset(presetTier3);
             document.getElementById('file-label').textContent = "Preset 3: Healthy Pass (Low Anomaly)";
             telemetrySelect.value = "normal";
             runPipeline();
@@ -143,6 +156,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const askRes = await fetch('/ask', { method: 'POST', body: formData });
             if (askRes.ok) {
                 const data = await askRes.json();
+                console.log("[NETWORK RESP] POST /ask returned:", data);
+                
+                // Update currentImagePath to match backend response image_path (critical for custom uploads)
+                if (data.image_path) {
+                    currentImagePath = data.image_path;
+                }
+
                 lastPipelineResult = data;
                 renderJuniorView(data);
                 populateSeniorPanel();
@@ -273,12 +293,12 @@ document.addEventListener('DOMContentLoaded', () => {
             seniorCorrectionForm.style.display = 'none';
             seniorSaveBtn.style.display = 'block';
             
-            let diag = "Confirmed Defect";
+            let diag = "Confirmed Defect Pattern";
             let steps = "Standard resolution steps.";
 
             if (lastPipelineResult) {
-                diag = lastPipelineResult.confirmed_diagnosis || lastPipelineResult.tentative_diagnosis || "Confirmed Surface Defect";
-                steps = lastPipelineResult.fix_steps || "1. Perform visual pad inspection\n2. Clear line clearance.";
+                diag = lastPipelineResult.confirmed_diagnosis || lastPipelineResult.tentative_diagnosis || "Confirmed Defect Pattern";
+                steps = lastPipelineResult.fix_steps || "1. Perform visual inspection\n2. Clean conveyor guide.";
             }
 
             document.getElementById('senior-input-diag').value = diag;
@@ -301,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (seniorSaveBtn) {
         seniorSaveBtn.addEventListener('click', () => {
-            const diag = document.getElementById('senior-input-diag').value || "Senior Corrected Defect";
+            const diag = document.getElementById('senior-input-diag').value || "Senior Corrected Defect Pattern";
             const steps = document.getElementById('senior-input-steps').value || "1. Manual resolution steps.";
             saveSeniorIncident(diag, steps);
         });
@@ -311,6 +331,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function saveSeniorIncident(confirmedDiag, fixSteps) {
         const noteText = document.getElementById('senior-input-note').value || "";
         
+        console.log(`[NETWORK REQ] POST /remember with image_path: ${currentImagePath}`);
+
         try {
             const res = await fetch('/remember', {
                 method: 'POST',
@@ -326,6 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (res.ok) {
                 const data = await res.json();
+                console.log("[NETWORK RESP] POST /remember returned:", data);
                 seniorStatusMsg.textContent = `✅ Saved to incident memory! (Incident Record ID #${data.id}, seeded: false)`;
                 seniorStatusMsg.style.display = 'block';
                 seniorSaveBtn.style.display = 'none';
