@@ -11,6 +11,7 @@ from perception.agent import PerceptionAgent
 from correlation.agent import CorrelationAgent
 from memory.agent import MemoryAgent
 from verifier.agent import VerifierAgent
+from coordinator.agent import CoordinatorAgent
 
 app = FastAPI(
     title="TACET DISCORD API",
@@ -41,6 +42,7 @@ verifier_agent = VerifierAgent(
     correlation_agent=correlation_agent,
     memory_agent=memory_agent
 )
+coordinator_agent = CoordinatorAgent(verifier_agent=verifier_agent)
 
 class CorrelateRequest(BaseModel):
     telemetry_mode: Optional[str] = "normal"
@@ -54,7 +56,7 @@ class RememberRequest(BaseModel):
     voice_note_path: Optional[str] = None
     confidence_at_capture: Optional[float] = 0.85
 
-class VerifyRequest(BaseModel):
+class AskRequest(BaseModel):
     image_path: Optional[str] = None
     telemetry_mode: Optional[str] = "normal"
 
@@ -140,12 +142,7 @@ async def remember(req: RememberRequest):
 
 @app.post("/verify")
 async def verify(file: Optional[UploadFile] = File(None), image_path: Optional[str] = Form(None), telemetry_mode: Optional[str] = Form("normal")):
-    """
-    Verifier Agent Endpoint:
-    Accepts image and telemetry stream reference.
-    Cross-examines Perception, Correlation, and Memory outputs.
-    Returns JSON with tier (1, 2, 3), reasoning, auditable values, and stage_b_tiebreaker.
-    """
+    """Verifier Agent Endpoint"""
     target_path = None
     if file:
         file_ext = os.path.splitext(file.filename)[1] or ".png"
@@ -167,11 +164,31 @@ async def verify(file: Optional[UploadFile] = File(None), image_path: Optional[s
         raise HTTPException(status_code=500, detail=f"Verifier analysis failed: {str(e)}")
 
 @app.post("/ask")
-async def ask(payload: Dict[str, Any] = {}):
-    """Coordinator / Multi-Agent Pipeline Endpoint"""
-    image_path = payload.get("image_path") or os.path.join(base_dir, "data", "mvtec", "bottle", "test", "broken_large", "000.png")
-    telemetry_mode = payload.get("telemetry_mode", "normal")
-    return verifier_agent.verify(image_path=image_path, telemetry_mode=telemetry_mode)
+async def ask(file: Optional[UploadFile] = File(None), image_path: Optional[str] = Form(None), telemetry_mode: Optional[str] = Form("normal")):
+    """
+    Coordinator Agent / Full Pipeline Endpoint:
+    Calls /perceive -> /correlate -> /recall -> /verify in sequence.
+    Returns JSON response formatted strictly by Tier (1, 2, or 3).
+    """
+    target_path = None
+    if file:
+        file_ext = os.path.splitext(file.filename)[1] or ".png"
+        filename = f"ask_{uuid.uuid4().hex[:8]}{file_ext}"
+        target_path = os.path.join(uploads_dir, filename)
+        with open(target_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    elif image_path:
+        target_path = image_path
+    else:
+        target_path = os.path.join(base_dir, "data", "mvtec", "bottle", "test", "broken_large", "000.png")
+
+    if not os.path.exists(target_path):
+        raise HTTPException(status_code=400, detail=f"Image file not found at {target_path}")
+
+    try:
+        return coordinator_agent.ask(image_path=target_path, telemetry_mode=telemetry_mode or "normal")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Coordinator pipeline execution failed: {str(e)}")
 
 # Mount static directories
 app.mount("/heatmaps", StaticFiles(directory=os.path.join(static_dir, "heatmaps")), name="heatmaps")

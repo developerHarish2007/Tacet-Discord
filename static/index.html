@@ -26,21 +26,31 @@
             </div>
         </header>
 
+        <!-- Mode Toggle Tabs -->
+        <div class="mode-tabs">
+            <button class="mode-tab-btn active" id="tab-junior" data-mode="junior">👷‍♂️ Junior Tech View (Copilot & Reasoning Trace)</button>
+            <button class="mode-tab-btn" id="tab-senior" data-mode="senior">👨‍🔧 Senior Tech Handoff (Confirm / Correct Knowledge)</button>
+        </div>
+
+        <!-- Pre-staged Demo Preset Bar -->
+        <div class="preset-bar card">
+            <span class="preset-title">🎯 Judge Demo Presets:</span>
+            <button class="preset-btn" id="preset-tier1">1. Tier 1 Confirmed Match (Defect + Sensor Fault)</button>
+            <button class="preset-btn highlight" id="preset-tier2">⚡ 2. Centerpiece Conflict (Visual Anomaly vs Healthy Telemetry)</button>
+            <button class="preset-btn" id="preset-tier3">3. Tier 3 Safe Redirection (Low Confidence / No Match)</button>
+        </div>
+
         <!-- Main Dashboard Layout -->
         <main class="dashboard-grid">
-            <!-- Left Column: Input & Inspection -->
+            <!-- Left Column: Input & Telemetry Controls -->
             <section class="card input-card">
-                <h2>1. Defect & Sensor Inspection</h2>
-                <div class="tabs">
-                    <button class="tab-btn active" data-tab="junior">Junior Tech Mode</button>
-                    <button class="tab-btn" data-tab="senior">Senior Tech Handoff</button>
-                </div>
+                <h2>1. Inspection Controls</h2>
 
                 <div class="form-group">
                     <label>Visual Defect Upload (MVTec AD)</label>
                     <div class="drop-zone" id="drop-zone">
                         <div class="drop-icon">📷</div>
-                        <p>Drag & drop defect image or click to select</p>
+                        <p id="file-label">Drag & drop defect image or click to upload</p>
                         <input type="file" id="file-input" accept="image/*" hidden>
                     </div>
                 </div>
@@ -48,95 +58,154 @@
                 <div class="form-group">
                     <label>Vibration Telemetry Stream (NASA IMS)</label>
                     <select id="telemetry-select" class="form-select">
-                        <option value="normal">Baseline Normal Operation (Bearing Channel 1)</option>
-                        <option value="degraded">Degrading Bearing - Early Anomaly</option>
+                        <option value="normal">Baseline Normal Operation (Bearing RUL > 140h)</option>
+                        <option value="degraded" selected>Degrading Bearing - Early Anomaly (RUL ~ 48h)</option>
                         <option value="critical">Critical Failure Imminent (RUL < 10h)</option>
                     </select>
                 </div>
 
                 <button id="run-pipeline-btn" class="btn btn-primary">
-                    <span>⚡ Run 5-Agent Cross-Verification</span>
+                    <span>⚡ Run 5-Agent Pipeline (/ask)</span>
                 </button>
             </section>
 
-            <!-- Middle Column: Agent Diagnostics -->
-            <section class="card diagnostics-card">
-                <h2>2. 5-Agent Architecture Live Status</h2>
-                
-                <div class="agent-panel" id="agent-perception">
-                    <div class="agent-header">
-                        <span class="agent-name">👁️ 1. Perception Agent</span>
-                        <span class="badge" id="perception-status">Standby</span>
-                    </div>
-                    <div class="agent-body">
-                        <div class="stat-row">
-                            <span>Anomaly Score:</span>
-                            <strong id="percept-score">--</strong>
-                        </div>
-                        <div class="stat-row">
-                            <span>Mean Confidence:</span>
-                            <strong id="percept-confidence">--</strong>
-                        </div>
-                        <div class="stat-row">
-                            <span>MC Dropout Variance:</span>
-                            <strong id="percept-uncertainty">--</strong>
-                        </div>
-                        <div class="heatmap-preview" id="heatmap-container" style="display:none; margin-top:0.75rem;">
-                            <span class="stat-row"><span>Pixel Anomaly Heatmap:</span></span>
-                            <img id="heatmap-img" src="" alt="Anomaly Heatmap" style="width:100%; border-radius:6px; border:1px solid var(--border-color); margin-top:0.35rem;">
-                        </div>
-                    </div>
-                </div>
+            <!-- Middle Column: Prominent Live Reasoning Trace -->
+            <section class="card trace-card">
+                <h2>2. Live 5-Agent Reasoning Trace</h2>
+                <p class="trace-subtitle">Readable at demo distance — shows multi-agent conflict resolution</p>
 
-                <div class="agent-panel" id="agent-correlation">
-                    <div class="agent-header">
-                        <span class="agent-name">📈 2. Correlation Agent</span>
-                        <span class="badge" id="correlation-status">Standby</span>
-                    </div>
-                    <div class="agent-body">
-                        <div class="stat-row">
-                            <span>Predicted RUL:</span>
-                            <strong id="correl-rul">--</strong>
+                <div class="trace-panel">
+                    <div class="trace-step" id="trace-percept">
+                        <div class="trace-head">
+                            <span>👁️ Perception Agent</span>
+                            <strong id="trace-percept-score">--</strong>
                         </div>
-                        <div class="stat-row">
-                            <span>SHAP Attribution:</span>
-                            <strong id="correl-shap">--</strong>
-                        </div>
+                        <p id="trace-percept-desc">Awaiting visual image pass...</p>
                     </div>
-                </div>
 
-                <div class="agent-panel" id="agent-memory">
-                    <div class="agent-header">
-                        <span class="agent-name">🧠 3. Memory Agent</span>
-                        <span class="badge" id="memory-status">Standby</span>
-                    </div>
-                    <div class="agent-body">
-                        <div class="stat-row">
-                            <span>Incident Match Cosine:</span>
-                            <strong id="memory-similarity">--</strong>
+                    <div class="trace-step" id="trace-correl">
+                        <div class="trace-head">
+                            <span>📈 Correlation Agent</span>
+                            <strong id="trace-correl-rul">--</strong>
                         </div>
+                        <p id="trace-correl-desc">Awaiting telemetry window...</p>
+                    </div>
+
+                    <div class="trace-step" id="trace-memory">
+                        <div class="trace-head">
+                            <span>🧠 Memory Agent</span>
+                            <strong id="trace-memory-sim">--</strong>
+                        </div>
+                        <p id="trace-memory-desc">Awaiting incident cosine search...</p>
+                    </div>
+
+                    <div class="trace-step verifier-step" id="trace-verifier">
+                        <div class="trace-head">
+                            <span>⚖️ Verifier Agent (Critic)</span>
+                            <strong id="trace-verifier-tier">TIER --</strong>
+                        </div>
+                        <p id="trace-verifier-desc">Evaluating skeptic rules & Stage B tiebreaker...</p>
                     </div>
                 </div>
             </section>
 
-            <!-- Right Column: Verifier & Output -->
-            <section class="card verdict-card">
-                <h2>3. Skeptical Verifier Ruling</h2>
-                
-                <div class="verdict-banner tier-3" id="verdict-banner">
-                    <div class="tier-tag" id="verdict-tier">TIER 3</div>
-                    <h3 id="verdict-title">No Match / Disagreement Detected</h3>
-                    <p id="verdict-desc">Awaiting input data for multi-agent evaluation.</p>
+            <!-- Right Column: Dual View Container -->
+            <section class="card output-card">
+                <!-- JUNIOR VIEW PANEL -->
+                <div id="junior-view-panel" class="view-panel active">
+                    <h2>3. Junior Copilot Response</h2>
+
+                    <div class="verdict-banner tier-3" id="verdict-banner">
+                        <div class="tier-tag" id="verdict-tier">TIER --</div>
+                        <h3 id="verdict-title">System Standby</h3>
+                        <p id="verdict-desc">Run inspection to evaluate confidence tier.</p>
+                    </div>
+
+                    <!-- Tier 1 View Container -->
+                    <div id="tier1-container" class="tier-container" style="display:none;">
+                        <div class="result-box">
+                            <h4>✅ Confirmed Diagnosis</h4>
+                            <p id="t1-diagnosis" class="highlight-text">--</p>
+                            <h4>🔧 Fix Steps</h4>
+                            <pre id="t1-fix-steps" class="code-box">--</pre>
+                            <div class="audio-box" id="t1-audio-box" style="display:none;">
+                                <span>🔊 Senior Voice Note / Tribal Advice:</span>
+                                <p id="t1-voice-text">--</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tier 2 View Container -->
+                    <div id="tier2-container" class="tier-container" style="display:none;">
+                        <div class="unconfirmed-badge-box">
+                            <span class="unconfirmed-badge">⚠️ UNCONFIRMED ANSWER</span>
+                        </div>
+                        <div class="result-box warning-border">
+                            <h4>Tentative AI Diagnosis</h4>
+                            <p id="t2-tentative" class="warning-text">--</p>
+                            <div class="who-to-ask-box">
+                                <span>👤 Required Action:</span>
+                                <strong id="t2-who-to-ask">Ask: Senior Tech on shift</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tier 3 View Container -->
+                    <div id="tier3-container" class="tier-container" style="display:none;">
+                        <div class="redirect-alert-box">
+                            <div class="alert-icon">🚫</div>
+                            <h3>NO CONFIDENT MATCH</h3>
+                            <p id="t3-redirect-msg">Not confident enough — escalate to a senior technician</p>
+                        </div>
+                    </div>
+
+                    <div class="heatmap-preview" id="heatmap-container" style="display:none; margin-top:1rem;">
+                        <span class="stat-row"><span>Pixel Anomaly Heatmap:</span></span>
+                        <img id="heatmap-img" src="" alt="Anomaly Heatmap" style="width:100%; border-radius:6px; border:1px solid var(--border-color); margin-top:0.35rem;">
+                    </div>
                 </div>
 
-                <div class="verifier-reasoning">
-                    <h4>Verifier Agent Criticism</h4>
-                    <p id="verifier-notes">The Verifier agent will cross-examine visual heatmap anomaly scores against vibration telemetry RUL to detect false confidence.</p>
-                </div>
+                <!-- SENIOR VIEW PANEL -->
+                <div id="senior-view-panel" class="view-panel" style="display:none;">
+                    <h2>3. Senior Technician Tribal Knowledge Capture</h2>
+                    <p class="subtitle" style="margin-bottom:1rem;">Review AI draft diagnosis and teach the shared memory store</p>
 
-                <div class="senior-note-box" id="senior-note-box" style="display: none;">
-                    <h4>🔊 Senior Tribal Knowledge Audio/Note</h4>
-                    <p id="senior-audio-text">"When you hear this bearing whine, purge the grease line before resetting the pressure valve."</p>
+                    <div class="senior-card">
+                        <div class="draft-preview-box">
+                            <span class="label">AI Draft Diagnosis:</span>
+                            <h3 id="senior-draft-diag">--</h3>
+                            <span id="senior-draft-tier" class="badge">Tier --</span>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button id="senior-confirm-btn" class="btn btn-success">✅ Confirm Diagnosis</button>
+                            <button id="senior-correct-btn" class="btn btn-warning">✏️ Correct / Edit Diagnosis</button>
+                        </div>
+
+                        <div id="senior-correction-form" style="display:none; margin-top:1rem;">
+                            <div class="form-group">
+                                <label>Corrected Diagnosis</label>
+                                <input type="text" id="senior-input-diag" class="form-input" placeholder="e.g. Surface Hairline Scratch - Non-Structural">
+                            </div>
+                            <div class="form-group">
+                                <label>Fix Steps (Numbered)</label>
+                                <textarea id="senior-input-steps" class="form-textarea" rows="3" placeholder="1. Clean gripper pads\n2. Resume line at 80% speed"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top:1rem;">
+                            <label>Senior Tribal Voice Note / Note Stand-in</label>
+                            <input type="text" id="senior-input-note" class="form-input" placeholder="e.g. 'Check rubber seals before resetting valve pressure'">
+                        </div>
+
+                        <button id="senior-save-btn" class="btn btn-primary" style="display:none; margin-top:0.75rem;">
+                            💾 Save to Shared Incident Memory
+                        </button>
+
+                        <div id="senior-status-msg" class="success-banner" style="display:none; margin-top:1rem;">
+                            ✅ Saved to incident memory! (Seeded: false)
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>

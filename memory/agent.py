@@ -145,7 +145,7 @@ class MemoryAgent:
 
         for inc in incidents:
             sim = cosine_similarity(query_emb, inc["embedding"])
-            if sim > best_sim:
+            if sim >= best_sim:
                 best_sim = sim
                 best_match = inc
 

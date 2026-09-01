@@ -4,14 +4,54 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
     const telemetrySelect = document.getElementById('telemetry-select');
-    let selectedFile = null;
 
+    // Preset Buttons
+    const presetTier1 = document.getElementById('preset-tier1');
+    const presetTier2 = document.getElementById('preset-tier2');
+    const presetTier3 = document.getElementById('preset-tier3');
+
+    // Tabs
+    const tabJunior = document.getElementById('tab-junior');
+    const tabSenior = document.getElementById('tab-senior');
+    const juniorPanel = document.getElementById('junior-view-panel');
+    const seniorPanel = document.getElementById('senior-view-panel');
+
+    // Senior Controls
+    const seniorConfirmBtn = document.getElementById('senior-confirm-btn');
+    const seniorCorrectBtn = document.getElementById('senior-correct-btn');
+    const seniorSaveBtn = document.getElementById('senior-save-btn');
+    const seniorCorrectionForm = document.getElementById('senior-correction-form');
+    const seniorStatusMsg = document.getElementById('senior-status-msg');
+
+    let selectedFile = null;
+    let currentImagePath = "data/mvtec/bottle/test/broken_large/000.png";
+    let lastPipelineResult = null;
+
+    // Tab Switching
+    if (tabJunior && tabSenior) {
+        tabJunior.addEventListener('click', () => {
+            tabJunior.classList.add('active');
+            tabSenior.classList.remove('active');
+            juniorPanel.style.display = 'block';
+            seniorPanel.style.display = 'none';
+        });
+
+        tabSenior.addEventListener('click', () => {
+            tabSenior.classList.add('active');
+            tabJunior.classList.remove('active');
+            seniorPanel.style.display = 'block';
+            juniorPanel.style.display = 'none';
+            populateSeniorPanel();
+        });
+    }
+
+    // File Drop Zone
     if (dropZone && fileInput) {
         dropZone.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 selectedFile = e.target.files[0];
-                dropZone.querySelector('p').textContent = `Selected: ${selectedFile.name}`;
+                document.getElementById('file-label').textContent = `Selected: ${selectedFile.name}`;
             }
         });
         dropZone.addEventListener('dragover', (e) => {
@@ -26,11 +66,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.dataTransfer.files.length > 0) {
                 selectedFile = e.dataTransfer.files[0];
                 fileInput.files = e.dataTransfer.files;
-                dropZone.querySelector('p').textContent = `Selected: ${selectedFile.name}`;
+                document.getElementById('file-label').textContent = `Selected: ${selectedFile.name}`;
             }
         });
     }
 
+    // Check Backend Health
     async function checkHealth() {
         try {
             const res = await fetch('/health');
@@ -48,100 +89,228 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkHealth();
 
-    if (runPipelineBtn) {
-        runPipelineBtn.addEventListener('click', async () => {
-            runPipelineBtn.disabled = true;
-            runPipelineBtn.querySelector('span').textContent = 'Evaluating 5-Agent Cross-Verification...';
-
-            try {
-                const selectedMode = telemetrySelect ? telemetrySelect.value : 'normal';
-                const formData = new FormData();
-                if (selectedFile) {
-                    formData.append('file', selectedFile);
-                }
-                formData.append('telemetry_mode', selectedMode);
-
-                const verifyRes = await fetch('/verify', { method: 'POST', body: formData });
-                if (verifyRes.ok) {
-                    const verifyData = await verifyRes.json();
-                    const outputs = verifyData.agent_outputs || {};
-                    const percept = outputs.perception || {};
-                    const correl = outputs.correlation || {};
-                    const memory = outputs.memory || {};
-
-                    // 1. Update Perception UI Panel
-                    if (percept.anomaly_score !== undefined) {
-                        document.getElementById('percept-score').textContent = percept.anomaly_score.toFixed(4);
-                        document.getElementById('percept-confidence').textContent = (percept.mean_confidence * 100).toFixed(1) + '%';
-                        document.getElementById('percept-uncertainty').textContent = `±${percept.variance.toFixed(6)}`;
-                        document.getElementById('perception-status').textContent = 'Evaluated';
-
-                        if (percept.heatmap_path) {
-                            const heatmapContainer = document.getElementById('heatmap-container');
-                            const heatmapImg = document.getElementById('heatmap-img');
-                            heatmapImg.src = percept.heatmap_path;
-                            heatmapContainer.style.display = 'block';
-                        }
-                    }
-
-                    // 2. Update Correlation UI Panel
-                    if (correl.predicted_rul_hours !== undefined) {
-                        document.getElementById('correl-rul').textContent = `${correl.predicted_rul_hours} hrs`;
-                        document.getElementById('correl-shap').textContent = correl.top_contributing_feature || '--';
-                        document.getElementById('correlation-status').textContent = correl.sensor_anomaly ? 'Anomaly' : 'Normal';
-                    }
-
-                    // 3. Update Memory UI Panel
-                    if (memory.similarity_score !== undefined) {
-                        document.getElementById('memory-similarity').textContent = `${(memory.similarity_score * 100).toFixed(1)}% Cosine`;
-                        if (memory.match) {
-                            const tag = memory.match.seeded ? " [Seeded Demo Data]" : " [Senior Confirmed]";
-                            document.getElementById('memory-status').textContent = `Match ID #${memory.match.id}${tag}`;
-                        } else {
-                            document.getElementById('memory-status').textContent = "No Match (<30%)";
-                        }
-                    }
-
-                    // 4. Update Skeptical Verifier Ruling Card
-                    const verdictBanner = document.getElementById('verdict-banner');
-                    const verdictTier = document.getElementById('verdict-tier');
-                    const verdictTitle = document.getElementById('verdict-title');
-                    const verdictDesc = document.getElementById('verdict-desc');
-                    const verifierNotes = document.getElementById('verifier-notes');
-                    const seniorNoteBox = document.getElementById('senior-note-box');
-
-                    verdictBanner.className = `verdict-banner tier-${verifyData.tier}`;
-                    verdictTier.textContent = `TIER ${verifyData.tier}`;
-                    verdictTitle.textContent = verifyData.tier_label;
-                    verdictDesc.textContent = verifyData.reasoning;
-                    
-                    let auditText = `Auditable Values:\n` +
-                        `• Visual Confidence: ${(verifyData.auditable_values.mean_confidence * 100).toFixed(1)}%\n` +
-                        `• Dropout Variance: ±${verifyData.auditable_values.variance.toFixed(6)}\n` +
-                        `• Sensor Agreement: ${verifyData.auditable_values.agrees_with_perception}\n` +
-                        `• Memory Similarity: ${(verifyData.auditable_values.similarity_score * 100).toFixed(1)}%\n`;
-
-                    if (verifyData.stage_b_tiebreaker && verifyData.stage_b_tiebreaker.negotiation_needed) {
-                        auditText += `\n${verifyData.stage_b_tiebreaker.tiebreaker_summary}`;
-                    }
-
-                    verifierNotes.textContent = auditText;
-
-                    // Display senior voice note / diagnosis if available
-                    if (memory.match && (memory.match.confirmed_diagnosis || memory.match.voice_note_path)) {
-                        document.getElementById('senior-audio-text').textContent = 
-                            `"${memory.match.confirmed_diagnosis}"\nSteps: ${memory.match.fix_steps}`;
-                        seniorNoteBox.style.display = 'block';
-                    } else {
-                        seniorNoteBox.style.display = 'none';
-                    }
-                }
-            } catch (err) {
-                console.error("Pipeline trigger failed:", err);
-            } finally {
-                runPipelineBtn.disabled = false;
-                runPipelineBtn.querySelector('span').textContent = '⚡ Run 5-Agent Cross-Verification';
-            }
+    // Preset Handlers
+    if (presetTier1) {
+        presetTier1.addEventListener('click', () => {
+            selectedFile = null;
+            currentImagePath = "data/mvtec/bottle/test/broken_large/000.png";
+            document.getElementById('file-label').textContent = "Preset 1: Defect Photo (Broken Bottle)";
+            telemetrySelect.value = "degraded";
+            runPipeline();
         });
+    }
+
+    if (presetTier2) {
+        presetTier2.addEventListener('click', () => {
+            selectedFile = null;
+            currentImagePath = "data/mvtec/bottle/test/broken_large/000.png";
+            document.getElementById('file-label').textContent = "Preset 2: Visual Scratch vs Normal Telemetry";
+            telemetrySelect.value = "normal";
+            runPipeline();
+        });
+    }
+
+    if (presetTier3) {
+        presetTier3.addEventListener('click', () => {
+            selectedFile = null;
+            currentImagePath = "data/mvtec/bottle/test/good/001.png";
+            document.getElementById('file-label').textContent = "Preset 3: Healthy Pass (Low Anomaly)";
+            telemetrySelect.value = "normal";
+            runPipeline();
+        });
+    }
+
+    if (runPipelineBtn) {
+        runPipelineBtn.addEventListener('click', () => runPipeline());
+    }
+
+    // Main Pipeline Execution Call (/ask)
+    async function runPipeline() {
+        runPipelineBtn.disabled = true;
+        runPipelineBtn.querySelector('span').textContent = 'Executing Coordinator Pipeline (/ask)...';
+
+        try {
+            const selectedMode = telemetrySelect ? telemetrySelect.value : 'normal';
+            const formData = new FormData();
+            
+            if (selectedFile) {
+                formData.append('file', selectedFile);
+            } else {
+                formData.append('image_path', currentImagePath);
+            }
+            formData.append('telemetry_mode', selectedMode);
+
+            const askRes = await fetch('/ask', { method: 'POST', body: formData });
+            if (askRes.ok) {
+                const data = await askRes.json();
+                lastPipelineResult = data;
+                renderJuniorView(data);
+                populateSeniorPanel();
+            }
+        } catch (err) {
+            console.error("Pipeline request failed:", err);
+        } finally {
+            runPipelineBtn.disabled = false;
+            runPipelineBtn.querySelector('span').textContent = '⚡ Run 5-Agent Pipeline (/ask)';
+        }
+    }
+
+    // Render Junior View & Live Reasoning Trace
+    function renderJuniorView(data) {
+        const trace = data.reasoning_trace || {};
+        const pTrace = trace.perception || {};
+        const cTrace = trace.correlation || {};
+        const mTrace = trace.memory || {};
+        const vTrace = trace.verifier || {};
+
+        // 1. Update Prominent Live Reasoning Trace Panel
+        document.getElementById('trace-percept-score').textContent = `Score: ${(pTrace.score || 0).toFixed(4)}`;
+        document.getElementById('trace-percept-desc').textContent = pTrace.summary || '--';
+
+        document.getElementById('trace-correl-rul').textContent = `${cTrace.predicted_rul || 0} hrs`;
+        document.getElementById('trace-correl-desc').textContent = cTrace.summary || '--';
+
+        document.getElementById('trace-memory-sim').textContent = `${((mTrace.similarity || 0)*100).toFixed(1)}%`;
+        document.getElementById('trace-memory-desc').textContent = mTrace.summary || '--';
+
+        document.getElementById('trace-verifier-tier').textContent = `TIER ${vTrace.tier || data.tier}`;
+        document.getElementById('trace-verifier-desc').textContent = vTrace.reasoning || data.verifier_reasoning;
+
+        // 2. Verdict Banner
+        const verdictBanner = document.getElementById('verdict-banner');
+        const verdictTier = document.getElementById('verdict-tier');
+        const verdictTitle = document.getElementById('verdict-title');
+        const verdictDesc = document.getElementById('verdict-desc');
+
+        verdictBanner.className = `verdict-banner tier-${data.tier}`;
+        verdictTier.textContent = `TIER ${data.tier}`;
+        verdictTitle.textContent = data.tier_label;
+        verdictDesc.textContent = data.verifier_reasoning;
+
+        // 3. Hide all tier container views first
+        document.getElementById('tier1-container').style.display = 'none';
+        document.getElementById('tier2-container').style.display = 'none';
+        document.getElementById('tier3-container').style.display = 'none';
+
+        // 4. Render specified Tier container view
+        if (data.tier === 1) {
+            document.getElementById('tier1-container').style.display = 'block';
+            document.getElementById('t1-diagnosis').textContent = data.confirmed_diagnosis || '--';
+            document.getElementById('t1-fix-steps').textContent = data.fix_steps || '--';
+
+            if (data.voice_note_path) {
+                document.getElementById('t1-voice-text').textContent = `Audio Note: ${data.voice_note_path}`;
+                document.getElementById('t1-audio-box').style.display = 'block';
+            } else {
+                document.getElementById('t1-audio-box').style.display = 'none';
+            }
+        } else if (data.tier === 2) {
+            document.getElementById('tier2-container').style.display = 'block';
+            document.getElementById('t2-tentative').textContent = data.tentative_diagnosis || 'TENTATIVE DIAGNOSIS';
+            document.getElementById('t2-who-to-ask').textContent = `Recommended Action: ${data.who_to_ask}`;
+        } else if (data.tier === 3) {
+            document.getElementById('tier3-container').style.display = 'block';
+            document.getElementById('t3-redirect-msg').textContent = data.redirect_message || "Not confident enough — escalate to a senior technician";
+        }
+
+        // Heatmap Preview
+        if (data.heatmap_path) {
+            const heatmapContainer = document.getElementById('heatmap-container');
+            const heatmapImg = document.getElementById('heatmap-img');
+            heatmapImg.src = data.heatmap_path;
+            heatmapContainer.style.display = 'block';
+        }
+    }
+
+    // Populate Senior Handoff Panel
+    function populateSeniorPanel() {
+        if (!lastPipelineResult) return;
+        
+        const data = lastPipelineResult;
+        const draftHeader = document.getElementById('senior-draft-diag');
+        const draftTier = document.getElementById('senior-draft-tier');
+
+        let draftText = "No Anomaly Detected";
+        if (data.tier === 1) {
+            draftText = data.confirmed_diagnosis;
+        } else if (data.tier === 2) {
+            draftText = data.tentative_diagnosis;
+        } else {
+            draftText = "Unconfirmed Low-Confidence Reading";
+        }
+
+        draftHeader.textContent = draftText;
+        draftTier.textContent = `Tier ${data.tier}`;
+        seniorCorrectionForm.style.display = 'none';
+        seniorSaveBtn.style.display = 'none';
+        seniorStatusMsg.style.display = 'none';
+    }
+
+    // Senior Confirm Handler
+    if (seniorConfirmBtn) {
+        seniorConfirmBtn.addEventListener('click', async () => {
+            seniorCorrectionForm.style.display = 'none';
+            seniorSaveBtn.style.display = 'block';
+            
+            let diag = "Confirmed Defect";
+            let steps = "Standard resolution steps.";
+
+            if (lastPipelineResult) {
+                diag = lastPipelineResult.confirmed_diagnosis || lastPipelineResult.tentative_diagnosis || "Confirmed Surface Defect";
+                steps = lastPipelineResult.fix_steps || "1. Perform visual pad inspection\n2. Clear line clearance.";
+            }
+
+            document.getElementById('senior-input-diag').value = diag;
+            document.getElementById('senior-input-steps').value = steps;
+            
+            saveSeniorIncident(diag, steps);
+        });
+    }
+
+    // Senior Correct Handler
+    if (seniorCorrectBtn) {
+        seniorCorrectBtn.addEventListener('click', () => {
+            seniorCorrectionForm.style.display = 'block';
+            seniorSaveBtn.style.display = 'block';
+            
+            document.getElementById('senior-input-diag').value = "";
+            document.getElementById('senior-input-steps').value = "";
+        });
+    }
+
+    if (seniorSaveBtn) {
+        seniorSaveBtn.addEventListener('click', () => {
+            const diag = document.getElementById('senior-input-diag').value || "Senior Corrected Defect";
+            const steps = document.getElementById('senior-input-steps').value || "1. Manual resolution steps.";
+            saveSeniorIncident(diag, steps);
+        });
+    }
+
+    // Save Senior Incident to Incident Memory via /remember
+    async function saveSeniorIncident(confirmedDiag, fixSteps) {
+        const noteText = document.getElementById('senior-input-note').value || "";
+        
+        try {
+            const res = await fetch('/remember', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image_path: currentImagePath,
+                    confirmed_diagnosis: confirmedDiag,
+                    fix_steps: fixSteps,
+                    voice_note_path: noteText ? `/audio/${noteText.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp3` : None,
+                    confidence_at_capture: 0.98
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                seniorStatusMsg.textContent = `✅ Saved to incident memory! (Incident Record ID #${data.id}, seeded: false)`;
+                seniorStatusMsg.style.display = 'block';
+                seniorSaveBtn.style.display = 'none';
+            }
+        } catch (err) {
+            console.error("Save senior incident failed:", err);
+        }
     }
 });
