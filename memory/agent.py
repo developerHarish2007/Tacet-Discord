@@ -5,27 +5,44 @@ from memory.database import IncidentDatabase
 from memory.embeddings import ResNetEmbeddingExtractor, cosine_similarity
 
 class MemoryAgent:
-    def __init__(self, data_dir: str = None, db_path: str = None):
+    def __init__(self, data_dir: str = None, db_path: str = None, force_reseed: bool = False):
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.data_dir = data_dir or os.path.join(base_dir, "data", "mvtec", "bottle")
         self.db = IncidentDatabase(db_path=db_path)
         self.extractor = ResNetEmbeddingExtractor()
+        
+        if force_reseed:
+            self.db.clear_database()
+            
         self._seed_demo_incidents_if_empty()
 
     def _seed_demo_incidents_if_empty(self):
         """Seeds 8-10 fake-but-realistic confirmed incidents using real MVTec AD images with seeded: True"""
         existing = self.db.get_all_incidents()
-        if len(existing) >= 8:
-            print(f"Memory Agent database already seeded ({len(existing)} incidents).")
+        
+        # Check if DB needs re-seeding (e.g. if PyTorch loaded after initial fallback seeding)
+        needs_reseed = False
+        if existing:
+            # Test recall on first entry image to verify embedding dimension & model consistency
+            first_img = existing[0]["image_path"]
+            if os.path.exists(first_img):
+                test_emb = self.extractor.get_embedding(first_img)
+                sim = cosine_similarity(test_emb, existing[0]["embedding"])
+                if sim < 0.8:  # Mismatch indicates model changed (e.g. PyTorch installed after NumPy fallback)
+                    print("Detected model embedding mismatch. Re-seeding incident memory database...")
+                    self.db.clear_database()
+                    existing = []
+                    needs_reseed = True
+
+        if len(existing) >= 8 and not needs_reseed:
             return
 
-        print("Seeding Memory Agent database with 8-10 historical senior-confirmed incidents...")
+        print("Seeding Memory Agent database with historical senior-confirmed incidents...")
         
-        # Gather images from MVTec bottle dataset
-        good_imgs = glob.glob(os.path.join(self.data_dir, "train", "good", "*.png")) + \
-                    glob.glob(os.path.join(self.data_dir, "test", "good", "*.png"))
-        broken_imgs = glob.glob(os.path.join(self.data_dir, "test", "broken_large", "*.png")) + \
-                      glob.glob(os.path.join(self.data_dir, "test", "broken_small", "*.png"))
+        good_imgs = sorted(glob.glob(os.path.join(self.data_dir, "train", "good", "*.png")) + \
+                           glob.glob(os.path.join(self.data_dir, "test", "good", "*.png")))
+        broken_imgs = sorted(glob.glob(os.path.join(self.data_dir, "test", "broken_large", "*.png")) + \
+                             glob.glob(os.path.join(self.data_dir, "test", "broken_small", "*.png")))
 
         demo_seed_configs = [
             {
@@ -92,7 +109,7 @@ class MemoryAgent:
             if not img_path or not os.path.exists(img_path):
                 continue
             
-            # Compute embedding once at insert time
+            # Compute embedding ONCE at insert time
             emb = self.extractor.get_embedding(img_path)
             self.db.insert_incident(
                 image_path=img_path,
