@@ -112,6 +112,64 @@
                         <h4>🛡️ Explicit Hallucination Verification Gate Trace:</h4>
                         <div class="hallucination-claims-list" id="jask-claims-list"></div>
                     </div>
+
+                    <!-- Collapsible 5-Agent Live Pipeline Trace & Heatmap Accordion Drawer -->
+                    <div id="jask-pipeline-trace-wrapper" style="display:none; margin-top: 20px;">
+                        <button id="toggle-pipeline-trace-btn" class="accordion-btn">
+                            <span>👁️ 5-Agent Live Pipeline Trace & ResNet-18 Heatmap (Click to Expand / Slide)</span>
+                            <span class="accordion-icon" id="trace-accordion-icon">▼</span>
+                        </button>
+                        <div id="pipeline-trace-content" class="accordion-content" style="display:none;">
+                            
+                            <!-- Heatmap & Perception Container -->
+                            <div class="trace-section-card" id="jask-heatmap-container" style="display:none;">
+                                <h4 style="color: var(--accent-blue); margin-bottom: 0.4rem;">🔥 ResNet-18 Spatial Anomaly Heatmap</h4>
+                                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 0.6rem;">Overlaying Jet-Colormap spatial defect detection on your uploaded image:</p>
+                                <div class="heatmap-img-wrapper" style="text-align: center;">
+                                    <img id="jask-heatmap-img" src="" alt="ResNet-18 Heatmap" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+                                </div>
+                            </div>
+
+                            <!-- 5-Agent Visual Trace Cards -->
+                            <div class="trace-agents-grid">
+                                <div class="trace-agent-card">
+                                    <h4>📷 1. Perception Agent</h4>
+                                    <p>Anomaly Score: <strong id="trace-percept-score" style="color:var(--accent-blue);">-</strong></p>
+                                    <p>Mean Confidence: <strong id="trace-percept-conf">-</strong></p>
+                                    <p>Image OCR: <strong id="trace-percept-ocr" style="color:var(--accent-amber);">-</strong></p>
+                                </div>
+
+                                <div class="trace-agent-card">
+                                    <h4>⚡ 2. Correlation Agent</h4>
+                                    <p>Telemetry Status: <strong style="color:var(--accent-green);">Normal Baseline</strong></p>
+                                    <p>Predicted RUL: <strong>142.5 hrs</strong></p>
+                                </div>
+
+                                <div class="trace-agent-card">
+                                    <h4>🧠 3. Memory Agent</h4>
+                                    <p>Retrieved Records: <strong id="trace-memory-count" style="color:var(--accent-blue);">0</strong></p>
+                                    <p>Top Similarity: <strong id="trace-memory-sim">-</strong></p>
+                                </div>
+
+                                <div class="trace-agent-card">
+                                    <h4>🛡️ 4. Verifier Agent</h4>
+                                    <p>Confidence Verdict: <strong id="trace-verifier-tier">-</strong></p>
+                                    <p>Hallucination Gate: <strong id="trace-verifier-hallucination" style="color:var(--accent-green);">Clean</strong></p>
+                                </div>
+                            </div>
+
+                            <!-- Multi-Modal Alignment Note -->
+                            <div id="jask-cross-modal-box" class="cross-modal-banner" style="display:none;">
+                                <span id="jask-cross-modal-text"></span>
+                            </div>
+
+                            <!-- Full Raw 5-Agent JSON Trace -->
+                            <div style="margin-top: 0.5rem;">
+                                <h4 style="color: var(--accent-blue); margin-bottom: 0.4rem;">🤖 5. Coordinator & Raw LLM Execution Trace:</h4>
+                                <pre id="jask-raw-json-trace" class="code-block" style="max-height: 250px; overflow-y: auto; font-size: 0.78rem;"></pre>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

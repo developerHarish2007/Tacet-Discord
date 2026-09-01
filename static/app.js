@@ -261,6 +261,68 @@ document.addEventListener('DOMContentLoaded', () => {
             d.textContent = `🛑 ${c}`;
             jaskClaimsList.appendChild(d);
         });
+
+        // 5-Agent Live Pipeline Trace & ResNet-18 Heatmap Accordion Drawer
+        const wrapper = document.getElementById('jask-pipeline-trace-wrapper');
+        const toggleBtn = document.getElementById('toggle-pipeline-trace-btn');
+        const traceContent = document.getElementById('pipeline-trace-content');
+        const icon = document.getElementById('trace-accordion-icon');
+        const heatmapContainer = document.getElementById('jask-heatmap-container');
+        const heatmapImg = document.getElementById('jask-heatmap-img');
+
+        if (wrapper) wrapper.style.display = 'block';
+
+        if (toggleBtn && !toggleBtn.dataset.bound) {
+            toggleBtn.dataset.bound = 'true';
+            toggleBtn.addEventListener('click', () => {
+                const isHidden = traceContent.style.display === 'none';
+                traceContent.style.display = isHidden ? 'flex' : 'none';
+                if (icon) icon.textContent = isHidden ? '▲' : '▼';
+            });
+        }
+
+        // Render ResNet-18 Anomaly Heatmap if image was uploaded
+        if (data.heatmap_path && heatmapContainer && heatmapImg) {
+            heatmapContainer.style.display = 'block';
+            heatmapImg.src = data.heatmap_path;
+        } else if (heatmapContainer) {
+            heatmapContainer.style.display = 'none';
+        }
+
+        // Populate Agent visual cards
+        const rtrace = data.reasoning_trace || {};
+        const ptrace = rtrace.perception || {};
+        const mtrace = rtrace.memory || {};
+
+        const tracePerceptScore = document.getElementById('trace-percept-score');
+        const tracePerceptConf = document.getElementById('trace-percept-conf');
+        const tracePerceptOcr = document.getElementById('trace-percept-ocr');
+        const traceMemoryCount = document.getElementById('trace-memory-count');
+        const traceMemorySim = document.getElementById('trace-memory-sim');
+        const traceVerifierTier = document.getElementById('trace-verifier-tier');
+        const traceVerifierHallucination = document.getElementById('trace-verifier-hallucination');
+        const crossModalBox = document.getElementById('jask-cross-modal-box');
+        const crossModalText = document.getElementById('jask-cross-modal-text');
+        const rawJsonPre = document.getElementById('jask-raw-json-trace');
+
+        if (tracePerceptScore) tracePerceptScore.textContent = ptrace.score !== null && ptrace.score !== undefined ? ptrace.score.toFixed(4) : 'N/A';
+        if (tracePerceptConf) tracePerceptConf.textContent = ptrace.confidence !== null && ptrace.confidence !== undefined ? ptrace.confidence.toFixed(4) : 'N/A';
+        if (tracePerceptOcr) tracePerceptOcr.textContent = ptrace.extracted_ocr || 'None detected';
+        if (traceMemoryCount) traceMemoryCount.textContent = mtrace.retrieved_count || 0;
+        if (traceMemorySim) traceMemorySim.textContent = mtrace.top_similarity ? `${(mtrace.top_similarity * 100).toFixed(0)}%` : '0%';
+        if (traceVerifierTier) traceVerifierTier.textContent = data.tier_label;
+        if (traceVerifierHallucination) traceVerifierHallucination.textContent = rtrace.hallucination_check && rtrace.hallucination_check.has_hallucination ? '🛑 Flagged' : '✅ Passed';
+
+        if (rtrace.cross_modal_note && crossModalBox && crossModalText) {
+            crossModalBox.style.display = 'block';
+            crossModalText.textContent = rtrace.cross_modal_note;
+        } else if (crossModalBox) {
+            crossModalBox.style.display = 'none';
+        }
+
+        if (rawJsonPre) {
+            rawJsonPre.textContent = JSON.stringify(rtrace, null, 2);
+        }
     }
 
     // -------------------------------------------------------------
