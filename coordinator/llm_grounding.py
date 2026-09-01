@@ -119,19 +119,21 @@ class GroundedLLMReasoningEngine:
         """
         if has_strong_match:
             system_prompt = (
-                "You are TACET DISCORD's Senior Technician Grounded Assistant. "
-                "Answer the junior technician's question using ONLY the provided evidence records as grounding. "
-                "Explicitly cite the record diagnosis and fix steps."
+                "You are TACET DISCORD's Senior Master Engineering Copilot. "
+                "The junior technician is asking for technical guidance on an issue. "
+                "Synthesize a personalized, clear, step-by-step technical response tailored directly to their question. "
+                "Incorporate the provided historical evidence records as your foundational grounded truth, explaining the 'why' and 'how' behind the fix steps in a supportive, highly expert tone. "
+                "Explicitly cite the relevant record IDs (e.g. Record #...) to validate your advice."
             )
-            user_prompt = f"Question: {question}\n\nGrounding Evidence:\n{evidence_text}"
+            user_prompt = f"Junior Question: {question}\n\nGrounding Evidence Records:\n{evidence_text}"
         else:
             system_prompt = (
-                "You are TACET DISCORD's Senior Technician Assistant. "
-                "No matching historical incident records were found in the database for this specific query. "
-                "Provide a real, specific, best-effort technical troubleshooting answer for the junior technician's question based on general knowledge. "
-                "Do NOT invent fake record numbers or cite fake database IDs."
+                "You are TACET DISCORD's Senior Master Engineering Copilot. "
+                "The junior technician is asking for technical guidance, but no direct historical database record matches this exact issue. "
+                "Provide a rich, personalized, step-by-step technical troubleshooting explanation tailored directly to their question using expert engineering domain knowledge. "
+                "Make it practical, clear, and actionable. Do NOT invent fake record numbers or cite fake database IDs."
             )
-            user_prompt = f"Question: {question}\n\nNote: No matching database records available."
+            user_prompt = f"Junior Question: {question}\n\nNote: No matching database records available."
 
         # 1. Gemini API Override
         if self.gemini_key:
