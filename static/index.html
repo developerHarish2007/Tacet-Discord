@@ -34,11 +34,14 @@
             </div>
         </header>
 
-        <!-- Navigation Mode Tabs -->
+        <!-- Navigation Mode Tabs (2 Core Tabs) -->
         <div class="mode-tabs">
-            <button class="mode-tab-btn active" id="tab-junior-ask" data-mode="junior-ask">💬 Junior — Ask (Photo + Text Query & LLM Grounding)</button>
-            <button class="mode-tab-btn" id="tab-senior-add" data-mode="senior-add">👨‍🔧 Senior — Add Record (Manual Entry)</button>
-            <button class="mode-tab-btn" id="tab-classic-ask" data-mode="classic">👁️ Pipeline Trace (/ask Inspection)</button>
+            <button class="mode-tab-btn active" id="tab-junior-ask" data-mode="junior-ask">💬 Junior — Ask (Photo + Text Query & 5-Agent Grounded Copilot)</button>
+            <button class="mode-tab-btn" id="tab-senior-add" data-mode="senior-add">👨‍🔧 Senior — Add Record (Manual Entry & Voice LM)</button>
+            <button id="open-slide-drawer-btn" class="slide-drawer-trigger-btn">
+                <span>👁️ View 5-Agent Live Pipeline Trace</span>
+                <span id="drawer-badge-indicator" class="drawer-badge">READY</span>
+            </button>
         </div>
 
         <!-- Quick Demo Presets Bar -->
@@ -112,64 +115,6 @@
                         <h4>🛡️ Explicit Hallucination Verification Gate Trace:</h4>
                         <div class="hallucination-claims-list" id="jask-claims-list"></div>
                     </div>
-
-                    <!-- Collapsible 5-Agent Live Pipeline Trace & Heatmap Accordion Drawer -->
-                    <div id="jask-pipeline-trace-wrapper" style="display:none; margin-top: 20px;">
-                        <button id="toggle-pipeline-trace-btn" class="accordion-btn">
-                            <span>👁️ 5-Agent Live Pipeline Trace & ResNet-18 Heatmap (Click to Expand / Slide)</span>
-                            <span class="accordion-icon" id="trace-accordion-icon">▼</span>
-                        </button>
-                        <div id="pipeline-trace-content" class="accordion-content" style="display:none;">
-                            
-                            <!-- Heatmap & Perception Container -->
-                            <div class="trace-section-card" id="jask-heatmap-container" style="display:none;">
-                                <h4 style="color: var(--accent-blue); margin-bottom: 0.4rem;">🔥 ResNet-18 Spatial Anomaly Heatmap</h4>
-                                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 0.6rem;">Overlaying Jet-Colormap spatial defect detection on your uploaded image:</p>
-                                <div class="heatmap-img-wrapper" style="text-align: center;">
-                                    <img id="jask-heatmap-img" src="" alt="ResNet-18 Heatmap" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
-                                </div>
-                            </div>
-
-                            <!-- 5-Agent Visual Trace Cards -->
-                            <div class="trace-agents-grid">
-                                <div class="trace-agent-card">
-                                    <h4>📷 1. Perception Agent</h4>
-                                    <p>Anomaly Score: <strong id="trace-percept-score" style="color:var(--accent-blue);">-</strong></p>
-                                    <p>Mean Confidence: <strong id="trace-percept-conf">-</strong></p>
-                                    <p>Image OCR: <strong id="trace-percept-ocr" style="color:var(--accent-amber);">-</strong></p>
-                                </div>
-
-                                <div class="trace-agent-card">
-                                    <h4>⚡ 2. Correlation Agent</h4>
-                                    <p>Telemetry Status: <strong style="color:var(--accent-green);">Normal Baseline</strong></p>
-                                    <p>Predicted RUL: <strong>142.5 hrs</strong></p>
-                                </div>
-
-                                <div class="trace-agent-card">
-                                    <h4>🧠 3. Memory Agent</h4>
-                                    <p>Retrieved Records: <strong id="trace-memory-count" style="color:var(--accent-blue);">0</strong></p>
-                                    <p>Top Similarity: <strong id="trace-memory-sim">-</strong></p>
-                                </div>
-
-                                <div class="trace-agent-card">
-                                    <h4>🛡️ 4. Verifier Agent</h4>
-                                    <p>Confidence Verdict: <strong id="trace-verifier-tier">-</strong></p>
-                                    <p>Hallucination Gate: <strong id="trace-verifier-hallucination" style="color:var(--accent-green);">Clean</strong></p>
-                                </div>
-                            </div>
-
-                            <!-- Multi-Modal Alignment Note -->
-                            <div id="jask-cross-modal-box" class="cross-modal-banner" style="display:none;">
-                                <span id="jask-cross-modal-text"></span>
-                            </div>
-
-                            <!-- Full Raw 5-Agent JSON Trace -->
-                            <div style="margin-top: 0.5rem;">
-                                <h4 style="color: var(--accent-blue); margin-bottom: 0.4rem;">🤖 5. Coordinator & Raw LLM Execution Trace:</h4>
-                                <pre id="jask-raw-json-trace" class="code-block" style="max-height: 250px; overflow-y: auto; font-size: 0.78rem;"></pre>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -223,42 +168,84 @@
             </div>
         </div>
 
-        <!-- 3. CLASSIC PIPELINE TRACE PANEL -->
-        <div id="panel-classic" class="panel-section" style="display:none;">
-            <div class="dashboard-grid">
-                <div class="input-column">
-                    <section class="card input-card">
-                        <h2>1. Inspection Input & Telemetry</h2>
-                        <div class="form-group">
-                            <label>Defect Photo:</label>
-                            <div class="drop-zone" id="classic-drop-zone">
-                                <div class="drop-icon">📷</div>
-                                <p id="classic-file-label">Click or Drag & Drop Photo</p>
-                                <input type="file" id="classic-file-input" accept="image/*" style="display:none;">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>NASA IMS Telemetry:</label>
-                            <select id="classic-telemetry" class="form-select">
-                                <option value="degraded">Degraded Bearing (Spiking Vibration)</option>
-                                <option value="normal" selected>Normal Baseline</option>
-                            </select>
-                        </div>
-                        <button id="classic-run-btn" class="btn btn-primary">⚡ Run Pipeline (/ask)</button>
-                    </section>
-                </div>
-                <div class="trace-column">
-                    <section class="card trace-card">
-                        <h2>2. 5-Agent Live Trace</h2>
-                        <div id="classic-trace-box" class="trace-panel">
-                            <p class="trace-subtitle">Perception, Correlation, Memory, Verifier outputs will appear here.</p>
-                        </div>
-                    </section>
-                </div>
-            </div>
+    </div>
+
+    <!-- INTERACTIVE SLIDE-OUT SIDE DRAWER (5-AGENT PIPELINE TRACE) -->
+    <div id="side-drawer-backdrop" class="drawer-backdrop" style="display:none;"></div>
+    <aside id="side-drawer-panel" class="side-drawer">
+        <div class="drawer-header">
+            <h3>👁️ 5-Agent Live Pipeline Trace</h3>
+            <button id="close-side-drawer-btn" class="drawer-close-btn">✕</button>
         </div>
 
-    </div>
+        <div class="drawer-body">
+            <!-- Heatmap Section -->
+            <div id="jask-heatmap-container" class="drawer-card" style="display:none;">
+                <h4 style="color:var(--accent-blue); margin-bottom:0.4rem;">🔥 ResNet-18 Anomaly Heatmap</h4>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.6rem;">Spatial anomaly heatmap generated for your uploaded photo:</p>
+                <div style="text-align:center;">
+                    <img id="jask-heatmap-img" src="" alt="Heatmap" style="max-width:100%; border-radius:6px; border:1px solid var(--border-color);">
+                </div>
+            </div>
+
+            <!-- 5-Agent Visual Cards -->
+            <div class="drawer-card">
+                <h4 style="color:var(--accent-blue); margin-bottom:0.6rem;">🤖 5 AI Agents Execution Pipeline</h4>
+                
+                <div class="agent-trace-row">
+                    <div class="agent-num">1</div>
+                    <div class="agent-info">
+                        <strong>Perception Agent</strong>
+                        <p>Score: <span id="trace-percept-score">-</span> | Confidence: <span id="trace-percept-conf">-</span></p>
+                        <p>OCR Text: <span id="trace-percept-ocr" style="color:var(--accent-amber);">-</span></p>
+                    </div>
+                </div>
+
+                <div class="agent-trace-row">
+                    <div class="agent-num">2</div>
+                    <div class="agent-info">
+                        <strong>Correlation Agent</strong>
+                        <p>Telemetry: <span style="color:var(--accent-green);">Normal Baseline</span> | Predicted RUL: <span>142.5 hrs</span></p>
+                    </div>
+                </div>
+
+                <div class="agent-trace-row">
+                    <div class="agent-num">3</div>
+                    <div class="agent-info">
+                        <strong>Memory Agent</strong>
+                        <p>Records Retrieved: <span id="trace-memory-count" style="color:var(--accent-blue);">0</span> | Top Sim: <span id="trace-memory-sim">-</span></p>
+                    </div>
+                </div>
+
+                <div class="agent-trace-row">
+                    <div class="agent-num">4</div>
+                    <div class="agent-info">
+                        <strong>Verifier Agent</strong>
+                        <p>Verdict: <span id="trace-verifier-tier">-</span> | Gate: <span id="trace-verifier-hallucination" style="color:var(--accent-green);">Clean</span></p>
+                    </div>
+                </div>
+
+                <div class="agent-trace-row">
+                    <div class="agent-num">5</div>
+                    <div class="agent-info">
+                        <strong>Coordinator Agent</strong>
+                        <p>Multi-Agent Grounded Reasoning Engine & LLM Output Generation</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Multi-Modal Alignment Note -->
+            <div id="jask-cross-modal-box" class="cross-modal-banner" style="display:none; margin-bottom:1rem;">
+                <span id="jask-cross-modal-text"></span>
+            </div>
+
+            <!-- Raw JSON Trace -->
+            <div class="drawer-card">
+                <h4 style="color:var(--accent-blue); margin-bottom:0.4rem;">💻 Raw 5-Agent Execution JSON</h4>
+                <pre id="jask-raw-json-trace" class="code-block" style="max-height:220px; overflow-y:auto; font-size:0.75rem;"></pre>
+            </div>
+        </div>
+    </aside>
 
     <script src="/static/app.js"></script>
 </body>

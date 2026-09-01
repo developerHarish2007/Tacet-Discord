@@ -384,66 +384,151 @@ body {
     font-weight: 700;
 }
 
-/* ACCORDION SLIDE DRAWER FOR 5-AGENT PIPELINE TRACE */
-.accordion-btn {
-    width: 100%;
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
-    border: 1px solid var(--border-color);
+/* INTERACTIVE SLIDE-OUT SIDE DRAWER */
+.slide-drawer-trigger-btn {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(15, 23, 42, 0.9));
+    border: 1px solid var(--accent-blue);
+    color: var(--accent-blue);
     border-radius: 8px;
-    padding: 0.85rem 1.25rem;
-    color: var(--text-main);
+    padding: 0.6rem 1rem;
     font-family: var(--font-heading);
-    font-size: 0.88rem;
     font-weight: 700;
+    font-size: 0.85rem;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 8px;
     cursor: pointer;
+    margin-left: auto;
     transition: all 0.25s ease;
 }
 
-.accordion-btn:hover {
-    border-color: var(--accent-blue);
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(15, 23, 42, 0.95));
+.slide-drawer-trigger-btn:hover {
+    background: var(--accent-blue);
+    color: #0f172a;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
 }
 
-.accordion-content {
-    background: rgba(15, 23, 42, 0.7);
-    border: 1px solid var(--border-color);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    padding: 1.25rem;
+.drawer-badge {
+    background: var(--accent-blue);
+    color: #0f172a;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-weight: 800;
+}
+
+.drawer-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 9998;
+}
+
+.side-drawer {
+    position: fixed;
+    top: 0;
+    right: -480px;
+    width: 440px;
+    max-width: 90vw;
+    height: 100vh;
+    background: #0f172a;
+    border-left: 1px solid var(--border-color);
+    box-shadow: -8px 0 25px rgba(0, 0, 0, 0.8);
+    z-index: 9999;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.trace-agents-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.85rem;
+.side-drawer.open {
+    right: 0;
 }
 
-.trace-agent-card {
+.drawer-header {
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(30, 41, 59, 0.5);
+}
+
+.drawer-header h3 {
+    font-size: 1rem;
+    color: var(--accent-blue);
+}
+
+.drawer-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    transition: color 0.2s ease;
+}
+
+.drawer-close-btn:hover {
+    color: var(--accent-red);
+}
+
+.drawer-body {
+    padding: 1.25rem;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.drawer-card {
     background: rgba(0, 0, 0, 0.35);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 0.75rem;
-    font-size: 0.8rem;
+    border-radius: 8px;
+    padding: 1rem;
 }
 
-.trace-agent-card h4 {
-    margin-bottom: 0.35rem;
+.agent-trace-row {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.agent-trace-row:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.agent-num {
+    background: rgba(56, 189, 248, 0.15);
     color: var(--accent-blue);
-    font-size: 0.83rem;
+    border: 1px solid var(--accent-blue);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.8rem;
+    flex-shrink: 0;
 }
 
-.cross-modal-banner {
-    background: rgba(251, 146, 60, 0.12);
-    border: 1px solid rgba(251, 146, 60, 0.4);
-    color: #fb923c;
-    padding: 0.65rem 0.85rem;
-    border-radius: 6px;
-    font-size: 0.83rem;
-    font-weight: 600;
+.agent-info {
+    font-size: 0.82rem;
+}
+
+.agent-info strong {
+    color: var(--text-main);
+    display: block;
+    margin-bottom: 0.2rem;
 }

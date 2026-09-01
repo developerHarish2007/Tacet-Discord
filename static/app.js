@@ -262,24 +262,9 @@ document.addEventListener('DOMContentLoaded', () => {
             jaskClaimsList.appendChild(d);
         });
 
-        // 5-Agent Live Pipeline Trace & ResNet-18 Heatmap Accordion Drawer
-        const wrapper = document.getElementById('jask-pipeline-trace-wrapper');
-        const toggleBtn = document.getElementById('toggle-pipeline-trace-btn');
-        const traceContent = document.getElementById('pipeline-trace-content');
-        const icon = document.getElementById('trace-accordion-icon');
+        // Populate 5-Agent Live Pipeline Trace & Heatmap inside Side Drawer
         const heatmapContainer = document.getElementById('jask-heatmap-container');
         const heatmapImg = document.getElementById('jask-heatmap-img');
-
-        if (wrapper) wrapper.style.display = 'block';
-
-        if (toggleBtn && !toggleBtn.dataset.bound) {
-            toggleBtn.dataset.bound = 'true';
-            toggleBtn.addEventListener('click', () => {
-                const isHidden = traceContent.style.display === 'none';
-                traceContent.style.display = isHidden ? 'flex' : 'none';
-                if (icon) icon.textContent = isHidden ? '▲' : '▼';
-            });
-        }
 
         // Render ResNet-18 Anomaly Heatmap if image was uploaded
         if (data.heatmap_path && heatmapContainer && heatmapImg) {
@@ -304,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const crossModalBox = document.getElementById('jask-cross-modal-box');
         const crossModalText = document.getElementById('jask-cross-modal-text');
         const rawJsonPre = document.getElementById('jask-raw-json-trace');
+        const drawerBadgeIndicator = document.getElementById('drawer-badge-indicator');
 
         if (tracePerceptScore) tracePerceptScore.textContent = ptrace.score !== null && ptrace.score !== undefined ? ptrace.score.toFixed(4) : 'N/A';
         if (tracePerceptConf) tracePerceptConf.textContent = ptrace.confidence !== null && ptrace.confidence !== undefined ? ptrace.confidence.toFixed(4) : 'N/A';
@@ -323,7 +309,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (rawJsonPre) {
             rawJsonPre.textContent = JSON.stringify(rtrace, null, 2);
         }
+
+        if (drawerBadgeIndicator) {
+            drawerBadgeIndicator.textContent = "UPDATED!";
+            drawerBadgeIndicator.style.background = "#4ade80";
+        }
     }
+
+    // -------------------------------------------------------------
+    // INTERACTIVE SLIDE-OUT SIDE DRAWER (5-AGENT PIPELINE TRACE)
+    // -------------------------------------------------------------
+    const openDrawerBtn = document.getElementById('open-slide-drawer-btn');
+    const closeDrawerBtn = document.getElementById('close-side-drawer-btn');
+    const sideDrawerPanel = document.getElementById('side-drawer-panel');
+    const sideDrawerBackdrop = document.getElementById('side-drawer-backdrop');
+
+    function openSideDrawer() {
+        if (sideDrawerPanel) sideDrawerPanel.classList.add('open');
+        if (sideDrawerBackdrop) sideDrawerBackdrop.style.display = 'block';
+    }
+
+    function closeSideDrawer() {
+        if (sideDrawerPanel) sideDrawerPanel.classList.remove('open');
+        if (sideDrawerBackdrop) sideDrawerBackdrop.style.display = 'none';
+    }
+
+    if (openDrawerBtn) openDrawerBtn.addEventListener('click', openSideDrawer);
+    if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', closeSideDrawer);
+    if (sideDrawerBackdrop) sideDrawerBackdrop.addEventListener('click', closeSideDrawer);
 
     // -------------------------------------------------------------
     // SUBMIT SENIOR ADD RECORD (/records/add)
