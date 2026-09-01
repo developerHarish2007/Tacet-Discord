@@ -3,11 +3,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Data download archives
+# Data download archives & runtime DBs
 data/mvtec/*.tar.xz
 data/uploads/*
 !data/uploads/.gitkeep
+memory/*.db
 memory/*.db-journal
+static/heatmaps/*.png
 
 # Virtual environments
 venv/

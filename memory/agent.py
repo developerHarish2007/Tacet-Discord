@@ -1,214 +1,226 @@
 import os
+import json
 import glob
 import numpy as np
+from typing import List, Dict, Any, Optional
 from memory.database import IncidentDatabase
 from memory.embeddings import ResNetEmbeddingExtractor, cosine_similarity
+from memory.text_matcher import SemanticTextMatcher
+from scripts.download_ai4i_data import generate_ai4i_dataset
 
 class MemoryAgent:
     def __init__(self, data_dir: str = None, db_path: str = None, force_reseed: bool = False):
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.data_dir = data_dir or os.path.join(base_dir, "data", "mvtec", "bottle")
+        self.ai4i_file = os.path.join(base_dir, "data", "ai4i2020_sampled.json")
         self.db = IncidentDatabase(db_path=db_path)
         self.extractor = ResNetEmbeddingExtractor()
+        self.text_matcher = SemanticTextMatcher(model_name="all-MiniLM-L6-v2")
         
         if force_reseed:
             self.db.clear_database()
             
         self._seed_demo_incidents_if_empty()
+        self._fit_text_matcher()
+
+    def _fit_text_matcher(self):
+        """Embeds all incident diagnosis & fix-step texts into the semantic vector store"""
+        incidents = self.db.get_all_incidents()
+        docs = []
+        for inc in incidents:
+            text = f"{inc['confirmed_diagnosis']} {inc['fix_steps']} {json.dumps(inc.get('sensor_data', {}))}"
+            docs.append((inc["id"], text))
+        self.text_matcher.fit_documents(docs)
 
     def _seed_demo_incidents_if_empty(self):
-        """Seeds 8-10 fake-but-realistic confirmed incidents using real MVTec AD images with seeded: True"""
+        """Seeds ~1,000 dataset records transformed from AI4I 2020 Predictive Maintenance Dataset"""
         existing = self.db.get_all_incidents()
         
-        # Check if DB needs re-seeding (e.g. if PyTorch loaded after initial fallback seeding)
-        needs_reseed = False
-        if existing:
-            # Test recall on first entry image to verify embedding dimension & model consistency
-            first_img = existing[0]["image_path"]
-            if os.path.exists(first_img):
-                test_emb = self.extractor.get_embedding(first_img)
-                sim = cosine_similarity(test_emb, existing[0]["embedding"])
-                if sim < 0.8:  # Mismatch indicates model changed (e.g. PyTorch installed after NumPy fallback)
-                    print("Detected model embedding mismatch. Re-seeding incident memory database...")
-                    self.db.clear_database()
-                    existing = []
-                    needs_reseed = True
-
-        if len(existing) >= 8 and not needs_reseed:
+        if len(existing) >= 900:
             return
 
-        print("Seeding Memory Agent database with historical senior-confirmed incidents...")
+        print("Seeding Memory Agent database with ~1,000 AI4I 2020 Predictive Maintenance records...")
         
-        good_imgs = sorted(glob.glob(os.path.join(self.data_dir, "train", "good", "*.png")) + \
-                           glob.glob(os.path.join(self.data_dir, "test", "good", "*.png")))
-        broken_imgs = sorted(glob.glob(os.path.join(self.data_dir, "test", "broken_large", "*.png")) + \
-                             glob.glob(os.path.join(self.data_dir, "test", "broken_small", "*.png")))
+        if os.path.exists(self.ai4i_file):
+            try:
+                with open(self.ai4i_file, "r", encoding="utf-8") as f:
+                    ai4i_records = json.load(f)
+            except Exception:
+                ai4i_records = generate_ai4i_dataset(1000)
+        else:
+            ai4i_records = generate_ai4i_dataset(1000)
 
-        demo_seed_configs = [
-            {
-                "img": broken_imgs[0] if len(broken_imgs) > 0 else None,
-                "diag": "Major Body Fracture - High Impact Line Collision",
-                "steps": "1. Stop conveyor section 4\n2. Clear broken glass fragments\n3. Check side guide alignment before restarting.",
-                "voice": "/audio/senior_note_fracture.mp3",
-                "conf": 0.92
-            },
-            {
-                "img": broken_imgs[1] if len(broken_imgs) > 1 else None,
-                "diag": "Surface Hairline Scratch - Non-Structural Defect",
-                "steps": "1. Inspect bottle neck gripping pads\n2. Clean rubber pads with isopropyl wipe\n3. Resume line at 80% speed.",
-                "voice": "/audio/senior_note_scratch.mp3",
-                "conf": 0.88
-            },
-            {
-                "img": broken_imgs[2] if len(broken_imgs) > 2 else None,
-                "diag": "Base Stress Crack - Thermal Shock Incident",
-                "steps": "1. Verify washer water temperature manifold (Target 65C)\n2. Flush heat exchanger valve.",
-                "voice": "/audio/senior_note_thermal.mp3",
-                "conf": 0.85
-            },
-            {
-                "img": broken_imgs[3] if len(broken_imgs) > 3 else None,
-                "diag": "Sidewall Chipping - Starwheel Transfer Jam",
-                "steps": "1. Check starwheel pocket clearance\n2. Replace worn nylon guide sleeve.",
-                "voice": None,
-                "conf": 0.87
-            },
-            {
-                "img": good_imgs[0] if len(good_imgs) > 0 else None,
-                "diag": "Normal Bottle Surface - No Anomaly Found",
-                "steps": "1. No action required\n2. Baseline inspection verified.",
-                "voice": None,
-                "conf": 0.95
-            },
-            {
-                "img": good_imgs[1] if len(good_imgs) > 1 else None,
-                "diag": "Clean Surface Finish - Verification Pass",
-                "steps": "1. Standard throughput pass.",
-                "voice": None,
-                "conf": 0.96
-            },
-            {
-                "img": good_imgs[2] if len(good_imgs) > 2 else None,
-                "diag": "Normal Neck & Rim - Baseline Pass",
-                "steps": "1. Routine operation.",
-                "voice": None,
-                "conf": 0.94
-            },
-            {
-                "img": broken_imgs[4] if len(broken_imgs) > 4 else (good_imgs[3] if len(good_imgs) > 3 else None),
-                "diag": "Micro Cracking - Capping Head Overspec Pressure",
-                "steps": "1. Reduce capper spindle torque to 2.4 Nm\n2. Inspect capping chuck wear.",
-                "voice": "/audio/senior_note_capper.mp3",
-                "conf": 0.89
-            }
-        ]
+        # Clear old toy seed records
+        self.db.clear_database()
+
+        # Cache reference embedding for synthetic image paths
+        dummy_emb = np.zeros(512, dtype=np.float32)
+        sample_img = "data/mvtec/bottle/test/broken_large/000.png"
+        if os.path.exists(sample_img):
+            try:
+                dummy_emb = self.extractor.get_embedding(sample_img)
+            except Exception:
+                pass
 
         count = 0
-        for cfg in demo_seed_configs:
-            img_path = cfg["img"]
-            if not img_path or not os.path.exists(img_path):
-                continue
-            
-            # Compute embedding ONCE at insert time
-            emb = self.extractor.get_embedding(img_path)
+        for rec in ai4i_records:
             self.db.insert_incident(
-                image_path=img_path,
-                heatmap_path=None,
-                embedding=emb,
-                confirmed_diagnosis=cfg["diag"],
-                fix_steps=cfg["steps"],
-                voice_note_path=cfg["voice"],
-                confidence_at_capture=cfg["conf"],
-                seeded=True
+                image_path=rec.get("image_path", sample_img),
+                heatmap_path=rec.get("heatmap_path"),
+                embedding=dummy_emb,
+                confirmed_diagnosis=rec["confirmed_diagnosis"],
+                fix_steps=rec["fix_steps"],
+                voice_note_path=rec.get("voice_note_path"),
+                confidence_at_capture=rec.get("confidence_at_capture", 0.90),
+                seeded=True,
+                provenance=rec.get("provenance", "seeded_dataset"),
+                sensor_data=rec.get("sensor_data", {}),
+                confirmed=rec.get("confirmed", True)
             )
             count += 1
             
-        print(f"Successfully seeded {count} demo incidents into SQLite.")
+        print(f"Successfully seeded {count} AI4I 2020 incidents into SQLite.")
 
     def recall(self, image_path: str) -> dict:
-        """
-        Takes a new defect image, computes its embedding, and performs cosine similarity
-        search against cached incident embeddings in SQLite.
-        Returns single closest match. Returns match: null if similarity < 0.30.
-        """
-        if not os.path.exists(image_path):
-            return {"match": None, "similarity_score": 0.0, "status": "image_not_found"}
-
-        query_emb = self.extractor.get_embedding(image_path)
-        incidents = self.db.get_all_incidents()
-
-        if not incidents:
-            return {"match": None, "similarity_score": 0.0, "status": "empty_database"}
-
-        best_match = None
-        best_sim = -1.0
-
-        for inc in incidents:
-            sim = cosine_similarity(query_emb, inc["embedding"])
-            if sim >= best_sim:
-                best_sim = sim
-                best_match = inc
-
-        best_sim = round(float(best_sim), 4)
-
-        if best_sim < 0.30 or best_match is None:
+        """Single image recall backward compatibility"""
+        res = self.recall_hybrid(image_path=image_path, text_query=None, top_k=1)
+        if res["top_matches"]:
+            top = res["top_matches"][0]
             return {
-                "match": None,
-                "similarity_score": best_sim,
-                "status": "no_match_below_threshold"
+                "match": top,
+                "similarity_score": top["similarity_score"],
+                "status": "match_found"
             }
+        return {"match": None, "similarity_score": 0.0, "status": "no_match_below_threshold"}
+
+    def recall_hybrid(
+        self,
+        image_path: Optional[str] = None,
+        text_query: Optional[str] = None,
+        top_k: int = 3
+    ) -> dict:
+        """
+        Hybrid recall method using ResNet image similarity and all-MiniLM-L6-v2 semantic text similarity.
+        Returns top_k matching historical records with score breakdown.
+        """
+        incidents = self.db.get_all_incidents()
+        if not incidents:
+            return {"top_matches": [], "highest_similarity": 0.0, "status": "empty_database"}
+
+        inc_map = {inc["id"]: inc for inc in incidents}
+
+        # 1. Semantic Text Similarity Search (all-MiniLM-L6-v2)
+        text_sims = {}
+        if text_query and text_query.strip():
+            matches = self.text_matcher.query(text_query, top_k=len(incidents))
+            for m in matches:
+                text_sims[m["id"]] = m["similarity_score"]
+
+        # 2. ResNet Visual Image Similarity Search
+        img_sims = {}
+        if image_path and os.path.exists(image_path):
+            query_emb = self.extractor.get_embedding(image_path)
+            for inc in incidents:
+                sim = cosine_similarity(query_emb, inc["embedding"])
+                img_sims[inc["id"]] = float(sim)
+
+        # 3. Combined Hybrid Score
+        scored_records = []
+        for inc_id, inc in inc_map.items():
+            t_score = text_sims.get(inc_id, 0.0)
+            v_score = img_sims.get(inc_id, 0.0)
+
+            if image_path and text_query:
+                combined_score = max(v_score, t_score, 0.6 * v_score + 0.4 * t_score)
+            elif text_query:
+                combined_score = t_score
+            else:
+                combined_score = v_score
+
+            combined_score = round(float(combined_score), 4)
+
+            if combined_score >= 0.15:
+                scored_records.append({
+                    "id": inc["id"],
+                    "image_path": inc["image_path"],
+                    "heatmap_path": inc["heatmap_path"],
+                    "confirmed_diagnosis": inc["confirmed_diagnosis"],
+                    "fix_steps": inc["fix_steps"],
+                    "voice_note_path": inc["voice_note_path"],
+                    "confidence_at_capture": inc["confidence_at_capture"],
+                    "timestamp": inc["timestamp"],
+                    "seeded": inc["seeded"],
+                    "provenance": inc.get("provenance", "seeded_dataset"),
+                    "sensor_data": inc.get("sensor_data", {}),
+                    "confirmed": inc.get("confirmed", True),
+                    "similarity_score": combined_score,
+                    "text_similarity": round(t_score, 4),
+                    "visual_similarity": round(v_score, 4)
+                })
+
+        scored_records.sort(key=lambda x: x["similarity_score"], reverse=True)
+        top_matches = scored_records[:top_k]
+
+        highest_sim = top_matches[0]["similarity_score"] if top_matches else 0.0
 
         return {
-            "match": {
-                "id": best_match["id"],
-                "image_path": best_match["image_path"],
-                "heatmap_path": best_match["heatmap_path"],
-                "confirmed_diagnosis": best_match["confirmed_diagnosis"],
-                "fix_steps": best_match["fix_steps"],
-                "voice_note_path": best_match["voice_note_path"],
-                "confidence_at_capture": best_match["confidence_at_capture"],
-                "timestamp": best_match["timestamp"],
-                "seeded": best_match["seeded"]
-            },
-            "similarity_score": best_sim,
-            "status": "match_found"
+            "top_matches": top_matches,
+            "highest_similarity": highest_sim,
+            "status": "match_found" if top_matches else "no_match"
         }
 
     def remember(
         self,
-        image_path: str,
+        image_path: Optional[str],
         confirmed_diagnosis: str,
         fix_steps: str,
         heatmap_path: str = None,
         voice_note_path: str = None,
-        confidence_at_capture: float = 0.85
+        confidence_at_capture: float = 0.95,
+        provenance: str = "senior_manual_entry",
+        sensor_data: dict = None
     ) -> dict:
         """
-        Inserts new senior-confirmed incident into SQLite with seeded: False.
-        Computes embedding once at insert time.
+        Inserts new senior-confirmed incident record into SQLite memory store.
+        Embeds its text and adds it to the semantic vector store.
         """
-        if not os.path.exists(image_path):
-            raise FileNotFoundError(f"Image not found at {image_path}")
+        emb = np.zeros(512, dtype=np.float32)
+        target_path = image_path or "data/mvtec/bottle/test/broken_large/000.png"
 
-        # Compute embedding ONCE at insert time
-        emb = self.extractor.get_embedding(image_path)
-        
+        if os.path.exists(target_path):
+            emb = self.extractor.get_embedding(target_path)
+        else:
+            base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+            alt_path = os.path.join(base_dir, target_path)
+            if os.path.exists(alt_path):
+                target_path = alt_path
+                emb = self.extractor.get_embedding(target_path)
+
         row_id = self.db.insert_incident(
-            image_path=image_path,
+            image_path=target_path,
             heatmap_path=heatmap_path,
             embedding=emb,
             confirmed_diagnosis=confirmed_diagnosis,
             fix_steps=fix_steps,
             voice_note_path=voice_note_path,
             confidence_at_capture=confidence_at_capture,
-            seeded=False
+            seeded=False,
+            provenance=provenance,
+            sensor_data=sensor_data or {},
+            confirmed=True
         )
+
+        # Add newly added senior record's text to the semantic vector store
+        text_content = f"{confirmed_diagnosis} {fix_steps} {json.dumps(sensor_data or {})}"
+        self.text_matcher.add_document(row_id, text_content)
 
         return {
             "id": row_id,
-            "image_path": image_path,
+            "image_path": target_path,
             "confirmed_diagnosis": confirmed_diagnosis,
             "fix_steps": fix_steps,
+            "provenance": provenance,
+            "confirmed": True,
             "seeded": False,
             "status": "incident_remembered"
         }

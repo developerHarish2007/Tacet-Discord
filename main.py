@@ -117,7 +117,7 @@ async def recall(image_path: str = Form(...)):
     return memory_agent.recall(image_path)
 
 class RememberRequest(BaseModel):
-    image_path: str
+    image_path: Optional[str] = None
     confirmed_diagnosis: str
     fix_steps: str
     voice_note_path: Optional[str] = None
@@ -125,13 +125,49 @@ class RememberRequest(BaseModel):
 
 @app.post("/remember")
 async def remember(req: RememberRequest):
-    return memory_agent.remember(
-        image_path=req.image_path,
-        confirmed_diagnosis=req.confirmed_diagnosis,
-        fix_steps=req.fix_steps,
-        voice_note_path=req.voice_note_path,
-        confidence_at_capture=req.confidence_at_capture
+    try:
+        return memory_agent.remember(
+            image_path=req.image_path,
+            confirmed_diagnosis=req.confirmed_diagnosis,
+            fix_steps=req.fix_steps,
+            voice_note_path=req.voice_note_path,
+            confidence_at_capture=req.confidence_at_capture,
+            provenance="senior_manual_entry"
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@app.post("/records/add")
+async def add_record(
+    file: Optional[UploadFile] = File(None),
+    image_path: Optional[str] = Form(None),
+    confirmed_diagnosis: str = Form(...),
+    fix_steps: str = Form(...),
+    voice_note_path: Optional[str] = Form(None)
+):
+    target_path = image_path
+    if file:
+        file_ext = os.path.splitext(file.filename)[1] or ".png"
+        filename = f"senior_{uuid.uuid4().hex[:8]}{file_ext}"
+        target_path = os.path.join(uploads_dir, filename)
+        with open(target_path, "wb") as f:
+            f.write(await file.read())
+
+    res = memory_agent.remember(
+        image_path=target_path,
+        confirmed_diagnosis=confirmed_diagnosis,
+        fix_steps=fix_steps,
+        voice_note_path=voice_note_path,
+        confidence_at_capture=0.98,
+        provenance="senior_manual_entry"
     )
+    return {
+        "status": "record_added",
+        "id": res["id"],
+        "provenance": "senior_manual_entry",
+        "confirmed": True,
+        "record": res
+    }
 
 @app.post("/verify")
 async def verify(image_path: str = Form(...), telemetry_mode: str = Form("normal")):
@@ -156,6 +192,27 @@ async def ask(
 
     return coordinator_agent.ask(image_path=target_path, telemetry_mode=telemetry_mode)
 
+@app.post("/junior/ask")
+async def ask_junior(
+    file: Optional[UploadFile] = File(None),
+    image_path: Optional[str] = Form(None),
+    question: str = Form(...),
+    telemetry_mode: Optional[str] = Form("normal")
+):
+    target_path = image_path
+    if file:
+        file_ext = os.path.splitext(file.filename)[1] or ".png"
+        filename = f"jask_{uuid.uuid4().hex[:8]}{file_ext}"
+        target_path = os.path.join(uploads_dir, filename)
+        with open(target_path, "wb") as f:
+            f.write(await file.read())
+
+    return coordinator_agent.ask_junior(
+        question=question,
+        image_path=target_path,
+        telemetry_mode=telemetry_mode
+    )
+
 class AcquireRequest(BaseModel):
     image_path: str
     evidence_id: Optional[str] = "vibration_sample_10s"
@@ -166,3 +223,7 @@ async def acquire_evidence(req: AcquireRequest):
         image_path=req.image_path,
         evidence_id=req.evidence_id
     )
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

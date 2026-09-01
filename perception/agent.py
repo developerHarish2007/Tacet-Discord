@@ -49,9 +49,12 @@ class PerceptionAgent:
         # Overlay heatmap onto original image
         heatmap_rel_path = self._render_and_save_heatmap(image_path, results["heatmap_matrix"])
         
+        # mean_confidence represents visual prediction confidence (0-1)
+        mean_conf = round(float(results["anomaly_score"]), 4)
+
         return {
             "anomaly_score": results["anomaly_score"],
-            "mean_confidence": results["mean_confidence"],
+            "mean_confidence": mean_conf,
             "variance": results["variance"],
             "heatmap_path": heatmap_rel_path,
             "status": "success"

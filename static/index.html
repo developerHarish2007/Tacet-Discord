@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TACET DISCORD | Active Evidence Gathering Shift-Handoff Copilot</title>
+    <title>TACET DISCORD | Shift-Handoff Copilot & Grounded Memory Agent</title>
     <link rel="stylesheet" href="/static/styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,15 +17,15 @@
                 <div class="logo-icon">⚡</div>
                 <div>
                     <h1>TACET DISCORD</h1>
-                    <p class="subtitle">Trust-Aware Factory Shift-Handoff Copilot & Active Evidence Gathering Engine</p>
+                    <p class="subtitle">Trust-Aware Shift-Handoff Copilot & AI4I 2020 Grounded Memory Agent</p>
                 </div>
             </div>
             <div class="header-right">
                 <!-- Factory Knowledge State Onboarding Badge -->
                 <div class="factory-state-badge" id="factory-state-badge">
                     <span class="factory-dot"></span>
-                    <span id="factory-mode-text">LEARNING / SHADOW MODE (Cold Start)</span>
-                    <span class="factory-count-tag" id="factory-incident-count">0 Confirmed Precedents</span>
+                    <span id="factory-mode-text">ASSISTED MODE (1,000+ AI4I Records)</span>
+                    <span class="factory-count-tag" id="factory-incident-count">1,000+ Records</span>
                 </div>
                 <div class="system-status">
                     <span class="status-indicator"></span>
@@ -34,239 +34,163 @@
             </div>
         </header>
 
-        <!-- Role Mode Switcher Tabs -->
+        <!-- Navigation Mode Tabs -->
         <div class="mode-tabs">
-            <button class="mode-tab-btn active" id="tab-junior" data-mode="junior">👷 Junior Tech Copilot View (Reasoning Trace & Active Investigation)</button>
-            <button class="mode-tab-btn" id="tab-senior" data-mode="senior">👨‍🔧 Senior Tech Handoff (Confirm / Correct Knowledge)</button>
+            <button class="mode-tab-btn active" id="tab-junior-ask" data-mode="junior-ask">💬 Junior — Ask (Photo + Text Query & LLM Grounding)</button>
+            <button class="mode-tab-btn" id="tab-senior-add" data-mode="senior-add">👨‍🔧 Senior — Add Record (Manual Entry)</button>
+            <button class="mode-tab-btn" id="tab-classic-ask" data-mode="classic">👁️ Pipeline Trace (/ask Inspection)</button>
         </div>
 
-        <!-- Quick Demo Presets Bar (these pre-load a photo + telemetry pair, AI still decides outcome) -->
+        <!-- Quick Demo Presets Bar -->
         <div class="preset-bar card">
-            <span class="preset-title">🎬 Judge Demo Quick-Load (AI still runs live — these just pre-select the image + telemetry pair):</span>
-            <button class="preset-btn" id="preset-tier1">📷 Load: Cracked Bottle + Spiking Telemetry</button>
-            <button class="preset-btn" id="preset-tier2">📷 Load: Scratched Bottle + Flat Baseline Telemetry</button>
-            <button class="preset-btn" id="preset-tier3">📷 Load: Clean Bottle + No Memory Match</button>
+            <span class="preset-title">🎬 Demo Quick-Query Presets:</span>
+            <button class="preset-btn" id="preset-query-1">❓ Ask: "Tool wear reached limit, what fix is needed?"</button>
+            <button class="preset-btn" id="preset-query-2">❓ Ask: "Heat dissipation problem at 1350 RPM"</button>
+            <button class="preset-btn" id="preset-query-3">❓ Ask: "Unknown alien quantum flux error"</button>
         </div>
 
-        <!-- Main Dashboard Layout -->
-        <div class="dashboard-grid">
-            
-            <!-- COLUMN 1: Image & Telemetry Input Controls -->
-            <div class="input-column">
-                <section class="card input-card">
-                    <h2>1. Inspection Input & Telemetry</h2>
+        <!-- MAIN CONTENT PANELS -->
+
+        <!-- 1. JUNIOR — ASK PANEL (Photo + Text Question) -->
+        <div id="panel-junior-ask" class="panel-section">
+            <div class="ask-grid">
+                <!-- Question Form Column -->
+                <div class="card input-card">
+                    <h2>💬 Ask Copilot (Photo + Text Question)</h2>
                     
-                    <!-- File Drag & Drop Zone -->
                     <div class="form-group">
-                        <label>Defect Photo (MVTec Benchmark or Upload):</label>
-                        <div class="drop-zone" id="drop-zone">
+                        <label>Optional Inspection Image:</label>
+                        <div class="drop-zone" id="ask-drop-zone">
                             <div class="drop-icon">📷</div>
-                            <p id="file-label">Click or Drag & Drop Defect Photo Here</p>
-                            <input type="file" id="file-input" accept="image/*" style="display:none;">
+                            <p id="ask-file-label">Click or Drag & Drop Photo (Optional)</p>
+                            <input type="file" id="ask-file-input" accept="image/*" style="display:none;">
                         </div>
                     </div>
 
-                    <!-- Telemetry Mode Selection -->
                     <div class="form-group">
-                        <label>NASA IMS Bearing Telemetry Stream:</label>
-                        <select id="telemetry-select" class="form-select">
-                            <option value="degraded">Degraded Bearing (Spiking Vibration Transients)</option>
-                            <option value="normal" selected>Normal Baseline (Healthy Vibration Limit ≤0.05g RMS)</option>
-                            <option value="critical">Critical Failure (Severe Inner-Race Pitting)</option>
-                        </select>
+                        <label>Junior Question / Issue Description:</label>
+                        <textarea id="ask-question-input" class="form-textarea" rows="4" placeholder="e.g. Spindle tool wear failure alarm triggered. What are the recommended fix steps for product L98442?"></textarea>
                     </div>
 
-                    <button id="run-pipeline-btn" class="btn btn-primary">
-                        <span>⚡ Run 5-Agent Pipeline (/ask)</span>
+                    <button id="ask-junior-btn" class="btn btn-primary">
+                        <span>⚡ Submit Grounded Query (/junior/ask)</span>
                     </button>
-                </section>
-
-                <!-- Heatmap Visualizer -->
-                <section class="card heatmap-card" id="heatmap-container" style="display:none;">
-                    <h2>Visual Anomaly Heatmap (PatchCore)</h2>
-                    <div class="heatmap-wrapper">
-                        <img id="heatmap-img" src="" alt="PatchCore Anomaly Heatmap">
-                    </div>
-                </section>
-            </div>
-
-            <!-- COLUMN 2: Prominent 5-Agent Live Reasoning Trace & Active Investigation Engine -->
-            <div class="trace-column">
-                <section class="card trace-card">
-                    <h2>2. Live 5-Agent Reasoning Trace</h2>
-                    <p class="trace-subtitle">Readable at demo distance — shows multi-agent conflict resolution</p>
-
-                    <div class="trace-panel">
-                        <div class="trace-step" id="trace-percept">
-                            <div class="trace-head">
-                                <span>👁️ Perception Agent</span>
-                                <strong id="trace-percept-score">Score: --</strong>
-                            </div>
-                            <p id="trace-percept-desc">Awaiting execution...</p>
-                        </div>
-
-                        <div class="trace-step" id="trace-correl">
-                            <div class="trace-head">
-                                <span>📈 Correlation Agent</span>
-                                <strong id="trace-correl-rul">RUL: --</strong>
-                            </div>
-                            <p id="trace-correl-desc">Awaiting execution...</p>
-                        </div>
-
-                        <div class="trace-step" id="trace-memory">
-                            <div class="trace-head">
-                                <span>🧠 Memory Agent</span>
-                                <strong id="trace-memory-sim">Match: --</strong>
-                            </div>
-                            <p id="trace-memory-desc">Awaiting execution...</p>
-                        </div>
-
-                        <div class="trace-step verifier-step" id="trace-verifier">
-                            <div class="trace-head">
-                                <span>⚖️ Verifier Agent (Critic)</span>
-                                <strong id="trace-verifier-tier">TIER: --</strong>
-                            </div>
-                            <p id="trace-verifier-desc">Awaiting execution...</p>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- NEW: Active Evidence-Gathering & Next-Best Evidence Card -->
-                <section class="card investigation-card" id="investigation-card" style="display:none;">
-                    <div class="investigation-header">
-                        <h2>🔍 Active Evidence Gathering Engine</h2>
-                        <span class="sufficiency-badge" id="sufficiency-badge">Sufficiency: LOW</span>
-                    </div>
-                    <p class="investigation-subtitle">When evidence is insufficient, TACET investigates missing evidence rather than guessing.</p>
-
-                    <!-- Candidate Hypotheses -->
-                    <div class="hypotheses-box">
-                        <h3>Current Candidate Hypotheses:</h3>
-                        <div id="hypotheses-list" class="hypotheses-list"></div>
-                    </div>
-
-                    <!-- Next-Best Evidence Recommendation -->
-                    <div class="next-evidence-box">
-                        <h3>Ranked Next-Best Evidence Recommendation:</h3>
-                        <p class="next-evidence-label" id="next-evidence-label">10-Second Vibration Sample (Bearing Accelerometer)</p>
-                        <p class="next-evidence-reason" id="next-evidence-reason">Expected to best separate leading defect hypotheses.</p>
-                        
-                        <button id="acquire-evidence-btn" class="btn btn-warning">
-                            <span>⚡ ACQUIRE NEXT BEST EVIDENCE (Execute Investigation Loop)</span>
-                        </button>
-                    </div>
-
-                    <!-- Before / After Transition Output -->
-                    <div id="investigation-transition-box" class="transition-box" style="display:none;">
-                        <div class="transition-banner">
-                            ✅ Active Investigation Completed
-                        </div>
-                        <p id="transition-summary-text" class="transition-text"></p>
-                    </div>
-                </section>
-            </div>
-
-            <!-- COLUMN 3: Junior Copilot Output & Senior Handoff Panel -->
-            <div class="output-column">
-                
-                <!-- JUNIOR COPILOT VIEW -->
-                <div id="junior-view-panel">
-                    <section class="card verdict-card">
-                        <h2>3. Copilot Verdict & Action Policy</h2>
-                        <div id="verdict-banner" class="verdict-banner">
-                            <div class="tier-tag" id="verdict-tier">AWAITING INPUT</div>
-                            <h3 id="verdict-title">Run pipeline to begin inspection</h3>
-                            <p id="verdict-desc">Select a preset or upload an image and click Run 5-Agent Pipeline.</p>
-                        </div>
-
-                        <!-- Tier 1 Output -->
-                        <div id="tier1-container" class="result-box tier1-box" style="display:none;">
-                            <h4>Confirmed Diagnosis:</h4>
-                            <p class="highlight-text" id="t1-diagnosis"></p>
-                            
-                            <h4>Confirmed Maintenance Fix Steps:</h4>
-                            <pre class="code-box" id="t1-fix-steps"></pre>
-
-                            <div id="t1-audio-box" class="audio-box" style="display:none;">
-                                🎙️ <span id="t1-voice-text">Senior Audio Note Attached</span>
-                            </div>
-                        </div>
-
-                        <!-- Tier 2 Output -->
-                        <div id="tier2-container" class="result-box tier2-box" style="display:none;">
-                            <div class="unconfirmed-badge-box">
-                                <span class="unconfirmed-badge">⚠️ UNCONFIRMED / TENTATIVE ANSWER</span>
-                            </div>
-                            <h4>Tentative Diagnosis:</h4>
-                            <p class="warning-text" id="t2-tentative"></p>
-
-                            <div class="who-to-ask-box">
-                                👨‍🔧 <strong id="t2-who-to-ask">Escalation Target: Senior Tech on shift</strong>
-                            </div>
-                        </div>
-
-                        <!-- Tier 3 Output -->
-                        <div id="tier3-container" class="result-box tier3-box" style="display:none;">
-                            <div class="redirect-alert-box">
-                                <div class="alert-icon">🛑</div>
-                                <h4>SAFE REDIRECTION REQUIRED</h4>
-                                <p id="t3-redirect-msg">Not confident enough — escalate to a senior technician.</p>
-                            </div>
-                        </div>
-                    </section>
                 </div>
 
-                <!-- SENIOR HANDOFF PANEL -->
-                <div id="senior-view-panel" style="display:none;">
-                    <section class="card senior-card">
-                        <h2>👨‍🔧 Senior Knowledge Handoff Panel</h2>
-                        <p class="subtitle">Validate AI draft readings & record institutional tribal knowledge.</p>
+                <!-- Answer Output Column -->
+                <div class="card output-card">
+                    <h2>⚖️ Grounded Verdict & Verified Answer</h2>
+                    
+                    <!-- Tier Warning Banner (when Tier 3) -->
+                    <div id="jask-warning-banner" class="warning-banner" style="display:none;">
+                        ⚠️ No strong historical match — this is a low-confidence estimate, confirm with a senior technician.
+                    </div>
 
-                        <div class="draft-preview-box">
-                            <span class="label">Current AI Draft Reading:</span>
-                            <h3 id="senior-draft-diag">Surface Hairline Scratch</h3>
-                            <span class="badge" id="senior-draft-tier">Tier 2</span>
-                        </div>
+                    <div id="jask-verdict-box" class="verdict-banner">
+                        <div class="tier-tag" id="jask-tier-badge">AWAITING QUERY</div>
+                        <h3 id="jask-tier-title">Submit a question to view grounded response</h3>
+                        <p id="jask-tier-reasoning">Questions are grounded against 1,000+ AI4I 2020 records and senior entries.</p>
+                    </div>
 
-                        <div class="form-group">
-                            <label>Senior Action:</label>
-                            <div class="action-buttons">
-                                <button class="btn btn-success" id="senior-confirm-btn">✅ Confirm AI Diagnosis</button>
-                                <button class="btn btn-warning" id="senior-correct-btn">✏️ Correct / Edit Diagnosis</button>
-                            </div>
-                        </div>
+                    <!-- Grounded Response Text -->
+                    <div id="jask-answer-box" class="result-box" style="display:none;">
+                        <h4>Verified Copilot Answer:</h4>
+                        <div id="jask-answer-text" class="answer-content-text"></div>
 
-                        <!-- Correction Form -->
-                        <div id="senior-correction-form" style="display:none;">
-                            <div class="form-group">
-                                <label>Confirmed Diagnosis Label:</label>
-                                <input type="text" id="senior-input-diag" class="form-input" placeholder="e.g. Surface hairline scratch, non-structural defect">
-                            </div>
+                        <h4>Grounding Evidence Sources:</h4>
+                        <ul id="jask-sources-list" class="sources-list"></ul>
+                    </div>
 
-                            <div class="form-group">
-                                <label>Recommended Fix Steps (Numbered):</label>
-                                <textarea id="senior-input-steps" class="form-textarea" rows="3" placeholder="1. Clean bottle gripping pads&#10;2. Adjust conveyor speed to 80%"></textarea>
-                            </div>
+                    <!-- Grounded Historical Evidence Cards -->
+                    <div id="jask-records-box" class="evidence-box" style="display:none;">
+                        <h4>Retrieved Candidate Memory Records (1-3):</h4>
+                        <div id="jask-records-list" class="records-cards-grid"></div>
+                    </div>
 
-                            <div class="form-group">
-                                <label>Optional Senior Voice / Text Note:</label>
-                                <input type="text" id="senior-input-note" class="form-input" placeholder="e.g. Always check rubber pad alignment before replacing bearing.">
-                            </div>
-                        </div>
-
-                        <button id="senior-save-btn" class="btn btn-primary" style="display:none;">
-                            💾 Save to Shared Incident Memory (/remember)
-                        </button>
-
-                        <div id="senior-status-msg" class="success-banner" style="display:none; margin-top:1rem;">
-                            ✅ Saved to incident memory!
-                        </div>
-                    </section>
+                    <!-- Explicit Hallucination Check Gate Trace -->
+                    <div id="jask-hallucination-box" class="trace-box" style="display:none;">
+                        <h4>🛡️ Explicit Hallucination Verification Gate Trace:</h4>
+                        <div class="hallucination-claims-list" id="jask-claims-list"></div>
+                    </div>
                 </div>
-
             </div>
-
         </div>
+
+        <!-- 2. SENIOR — ADD RECORD PANEL -->
+        <div id="panel-senior-add" class="panel-section" style="display:none;">
+            <div class="card senior-card max-w-700">
+                <h2>👨‍🔧 Senior Technician — Add Trusted Record</h2>
+                <p class="subtitle">Directly add institutional knowledge into trusted memory store (`provenance: senior_manual_entry`).</p>
+
+                <div class="form-group">
+                    <label>Optional Defect Image:</label>
+                    <div class="drop-zone" id="senior-add-drop-zone">
+                        <div class="drop-icon">📷</div>
+                        <p id="senior-add-file-label">Click or Drag & Drop Image File</p>
+                        <input type="file" id="senior-add-file-input" accept="image/*" style="display:none;">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Confirmed Diagnosis / Defect Label:</label>
+                    <input type="text" id="senior-add-diag" class="form-input" placeholder="e.g. Capping Spindle Torque Over-Torque Micro Fracture">
+                </div>
+
+                <div class="form-group">
+                    <label>Confirmed Fix Steps (Numbered List):</label>
+                    <textarea id="senior-add-steps" class="form-textarea" rows="4" placeholder="1. Reduce capper spindle torque to 2.4 Nm&#10;2. Replace worn rubber chuck pad&#10;3. Run test bottle inspection pass."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Optional Audio / Voice Note Path:</label>
+                    <input type="text" id="senior-add-voice" class="form-input" placeholder="e.g. /audio/senior_note_torque_fix.mp3">
+                </div>
+
+                <button id="senior-add-submit-btn" class="btn btn-success">
+                    <span>💾 Save to Trusted Memory Store (/records/add)</span>
+                </button>
+
+                <div id="senior-add-status-msg" class="success-banner" style="display:none; margin-top:1rem;">
+                    ✅ Record added to trusted memory store! Now instantly searchable by junior technicians.
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. CLASSIC PIPELINE TRACE PANEL -->
+        <div id="panel-classic" class="panel-section" style="display:none;">
+            <div class="dashboard-grid">
+                <div class="input-column">
+                    <section class="card input-card">
+                        <h2>1. Inspection Input & Telemetry</h2>
+                        <div class="form-group">
+                            <label>Defect Photo:</label>
+                            <div class="drop-zone" id="classic-drop-zone">
+                                <div class="drop-icon">📷</div>
+                                <p id="classic-file-label">Click or Drag & Drop Photo</p>
+                                <input type="file" id="classic-file-input" accept="image/*" style="display:none;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>NASA IMS Telemetry:</label>
+                            <select id="classic-telemetry" class="form-select">
+                                <option value="degraded">Degraded Bearing (Spiking Vibration)</option>
+                                <option value="normal" selected>Normal Baseline</option>
+                            </select>
+                        </div>
+                        <button id="classic-run-btn" class="btn btn-primary">⚡ Run Pipeline (/ask)</button>
+                    </section>
+                </div>
+                <div class="trace-column">
+                    <section class="card trace-card">
+                        <h2>2. 5-Agent Live Trace</h2>
+                        <div id="classic-trace-box" class="trace-panel">
+                            <p class="trace-subtitle">Perception, Correlation, Memory, Verifier outputs will appear here.</p>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script src="/static/app.js"></script>

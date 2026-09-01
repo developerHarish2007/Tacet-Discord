@@ -29,9 +29,21 @@ class IncidentDatabase:
                     voice_note_path TEXT,
                     confidence_at_capture REAL,
                     timestamp TEXT NOT NULL,
-                    seeded INTEGER DEFAULT 0
+                    seeded INTEGER DEFAULT 0,
+                    provenance TEXT DEFAULT 'seeded_dataset',
+                    sensor_data TEXT DEFAULT '{}',
+                    confirmed INTEGER DEFAULT 1
                 )
             """)
+            # Auto-migrate columns if table already existed without them
+            cursor.execute("PRAGMA table_info(incidents)")
+            cols = [info[1] for info in cursor.fetchall()]
+            if "provenance" not in cols:
+                cursor.execute("ALTER TABLE incidents ADD COLUMN provenance TEXT DEFAULT 'seeded_dataset'")
+            if "sensor_data" not in cols:
+                cursor.execute("ALTER TABLE incidents ADD COLUMN sensor_data TEXT DEFAULT '{}'")
+            if "confirmed" not in cols:
+                cursor.execute("ALTER TABLE incidents ADD COLUMN confirmed INTEGER DEFAULT 1")
             conn.commit()
 
     def insert_incident(
@@ -43,23 +55,30 @@ class IncidentDatabase:
         heatmap_path: Optional[str] = None,
         voice_note_path: Optional[str] = None,
         confidence_at_capture: float = 0.85,
-        seeded: bool = False
+        seeded: bool = False,
+        provenance: str = "seeded_dataset",
+        sensor_data: Optional[Dict[str, Any]] = None,
+        confirmed: bool = True
     ) -> int:
-        """Inserts incident record with precomputed embedding vector into SQLite"""
+        """Inserts incident record into SQLite store"""
         embedding_json = json.dumps(embedding.tolist())
         timestamp_str = datetime.utcnow().isoformat()
         seeded_int = 1 if seeded else 0
+        confirmed_int = 1 if confirmed else 0
+        sensor_data_json = json.dumps(sensor_data or {})
 
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO incidents (
                     image_path, heatmap_path, embedding, confirmed_diagnosis,
-                    fix_steps, voice_note_path, confidence_at_capture, timestamp, seeded
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    fix_steps, voice_note_path, confidence_at_capture, timestamp, seeded,
+                    provenance, sensor_data, confirmed
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 image_path, heatmap_path, embedding_json, confirmed_diagnosis,
-                fix_steps, voice_note_path, confidence_at_capture, timestamp_str, seeded_int
+                fix_steps, voice_note_path, confidence_at_capture, timestamp_str, seeded_int,
+                provenance, sensor_data_json, confirmed_int
             ))
             conn.commit()
             return cursor.lastrowid
@@ -70,13 +89,21 @@ class IncidentDatabase:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT id, image_path, heatmap_path, embedding, confirmed_diagnosis,
-                       fix_steps, voice_note_path, confidence_at_capture, timestamp, seeded
+                       fix_steps, voice_note_path, confidence_at_capture, timestamp, seeded,
+                       provenance, sensor_data, confirmed
                 FROM incidents
             """)
             rows = cursor.fetchall()
             
         results = []
         for r in rows:
+            sensor_dict = {}
+            if r[11]:
+                try:
+                    sensor_dict = json.loads(r[11])
+                except Exception:
+                    pass
+
             results.append({
                 "id": r[0],
                 "image_path": r[1],
@@ -87,7 +114,10 @@ class IncidentDatabase:
                 "voice_note_path": r[6],
                 "confidence_at_capture": r[7],
                 "timestamp": r[8],
-                "seeded": bool(r[9])
+                "seeded": bool(r[9]),
+                "provenance": r[10] or "seeded_dataset",
+                "sensor_data": sensor_dict,
+                "confirmed": bool(r[12])
             })
         return results
 
