@@ -1,0 +1,38 @@
+{
+  "normal": {
+    "predicted_rul_hours": 142.5,
+    "sensor_anomaly": false,
+    "top_contributing_feature": "Normal Baseline RMS (Channel 1)",
+    "shap_summary": {
+      "rms": 0.45,
+      "std": 0.25,
+      "peak_to_peak": 0.18,
+      "kurtosis": 0.12
+    },
+    "explanation_text": "Vibration levels remain within 0.05g RMS baseline limits; no degradation transient spikes observed in 60-min window."
+  },
+  "degraded": {
+    "predicted_rul_hours": 48.0,
+    "sensor_anomaly": true,
+    "top_contributing_feature": "Kurtosis Spikes (Channel 1)",
+    "shap_summary": {
+      "kurtosis": 0.52,
+      "peak_to_peak": 0.28,
+      "rms": 0.12,
+      "std": 0.08
+    },
+    "explanation_text": "Kurtosis elevated to 5.4 (threshold 3.0), indicating early inner-race ball bearing pitting transients."
+  },
+  "critical": {
+    "predicted_rul_hours": 8.2,
+    "sensor_anomaly": true,
+    "top_contributing_feature": "Peak-to-Peak Amplitude Spikes",
+    "shap_summary": {
+      "peak_to_peak": 0.61,
+      "kurtosis": 0.24,
+      "rms": 0.10,
+      "std": 0.05
+    },
+    "explanation_text": "Severe peak-to-peak amplitude spikes (>1.2g) detected; bearing failure predicted within 8.2 operating hours."
+  }
+}
