@@ -113,13 +113,16 @@ class CoordinatorAgent:
         5. Verifies output through VerifierAgent.
         """
         percept_res = None
+        query_text = question
         if image_path and os.path.exists(image_path):
             percept_res = self.verifier.perception.perceive(image_path)
+            if percept_res and percept_res.get("extracted_text"):
+                query_text = f"{question} [Image Label/OCR: '{percept_res['extracted_text']}']"
 
         # 2. Hybrid Memory Recall (TF-IDF Text + ResNet Visual)
         memory_hybrid_res = self.verifier.memory.recall_hybrid(
             image_path=image_path,
-            text_query=question,
+            text_query=query_text,
             top_k=3
         )
         retrieved_records = memory_hybrid_res.get("top_matches", [])

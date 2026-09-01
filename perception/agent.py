@@ -39,17 +39,36 @@ class PerceptionAgent:
             print("No training images found; using default reference memory bank.")
             self.detector.fit_memory_bank([])
 
+    def extract_image_text(self, image_path: str) -> str:
+        """Extracts written text/labels from photo using OCR if available"""
+        if not image_path or not os.path.exists(image_path):
+            return ""
+        try:
+            import pytesseract
+            img = Image.open(image_path).convert('RGB')
+            text = pytesseract.image_to_string(img).strip()
+            clean_text = " ".join(text.split())
+            if clean_text and len(clean_text) > 2:
+                print(f"Extracted image OCR text: '{clean_text}'")
+                return clean_text
+        except Exception:
+            pass
+        return ""
+
     def perceive(self, image_path: str) -> dict:
         """
         Runs perception analysis on given defect photo.
-        Generates pixel-level anomaly heatmap and performs Monte Carlo Dropout.
+        Generates pixel-level anomaly heatmap, performs Monte Carlo Dropout,
+        and extracts any printed text/labels from the photo via OCR.
         """
         results = self.detector.predict_with_mc_dropout(image_path)
         
         # Overlay heatmap onto original image
         heatmap_rel_path = self._render_and_save_heatmap(image_path, results["heatmap_matrix"])
         
-        # mean_confidence represents visual prediction confidence (0-1)
+        # Extract text from image via OCR
+        ocr_text = self.extract_image_text(image_path)
+
         mean_conf = round(float(results["anomaly_score"]), 4)
 
         return {
@@ -57,6 +76,7 @@ class PerceptionAgent:
             "mean_confidence": mean_conf,
             "variance": results["variance"],
             "heatmap_path": heatmap_rel_path,
+            "extracted_text": ocr_text,
             "status": "success"
         }
 
