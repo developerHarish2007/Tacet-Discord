@@ -142,6 +142,15 @@
                 </div>
 
                 <div class="form-group">
+                    <label>🎙️ Multimodal Voice Capture (Voice Note Audio):</label>
+                    <div class="audio-input-row" style="display:flex; gap:10px; align-items:center;">
+                        <input type="file" id="senior-add-audio-file" accept="audio/*" class="form-input" style="flex:1;">
+                        <button type="button" id="senior-voice-rec-btn" class="btn btn-primary" style="white-space:nowrap;">🎙️ Record Mic</button>
+                    </div>
+                    <p id="senior-voice-status" class="hint-text" style="margin-top:4px; color:#8b949e; font-size:0.85rem;">Upload an audio file (.wav, .mp3, .m4a) or speak directly into your mic. Voice notes are automatically transcribed & cleaned by Gemma 4 into structured records.</p>
+                </div>
+
+                <div class="form-group">
                     <label>Optional Audio / Voice Note Path:</label>
                     <input type="text" id="senior-add-voice" class="form-input" placeholder="e.g. /audio/senior_note_torque_fix.mp3">
                 </div>

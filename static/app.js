@@ -267,23 +267,81 @@ document.addEventListener('DOMContentLoaded', () => {
     // SUBMIT SENIOR ADD RECORD (/records/add)
     // -------------------------------------------------------------
     async function handleSeniorAddSubmit() {
+    // Microphone recording state for Senior Add
+    const seniorAddAudioFile = document.getElementById('senior-add-audio-file');
+    const seniorVoiceRecBtn = document.getElementById('senior-voice-rec-btn');
+    const seniorVoiceStatus = document.getElementById('senior-voice-status');
+
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recordedAudioBlob = null;
+
+    if (seniorVoiceRecBtn) {
+        seniorVoiceRecBtn.addEventListener('click', async () => {
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        if (seniorVoiceStatus) {
+                            seniorVoiceStatus.textContent = "🎙️ Voice note recorded successfully! (Ready for submission)";
+                            seniorVoiceStatus.style.color = "#3fb950";
+                        }
+                    };
+
+                    mediaRecorder.start();
+                    seniorVoiceRecBtn.textContent = "🛑 Stop Recording";
+                    seniorVoiceRecBtn.classList.remove('btn-primary');
+                    seniorVoiceRecBtn.classList.add('btn-danger');
+                    if (seniorVoiceStatus) {
+                        seniorVoiceStatus.textContent = "🔴 Recording voice note... Speak clearly into your mic.";
+                        seniorVoiceStatus.style.color = "#f85149";
+                    }
+                } catch (err) {
+                    alert("Microphone access failed: " + err.message);
+                }
+            } else if (mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                seniorVoiceRecBtn.textContent = "🎙️ Record Mic";
+                seniorVoiceRecBtn.classList.remove('btn-danger');
+                seniorVoiceRecBtn.classList.add('btn-primary');
+            }
+        });
+    }
+
+    async function handleSeniorAddSubmit() {
         const diag = seniorAddDiag.value.trim();
         const steps = seniorAddSteps.value.trim();
         const voice = seniorAddVoice.value.trim();
+        const audioFileInput = seniorAddAudioFile && seniorAddAudioFile.files.length > 0 ? seniorAddAudioFile.files[0] : null;
 
-        if (!diag || !steps) {
-            alert("Please provide both diagnosis label and fix steps.");
+        if (!diag && !steps && !audioFileInput && !recordedAudioBlob) {
+            alert("Please provide diagnosis & fix steps, or record/upload a voice note.");
             return;
         }
 
         seniorAddSubmitBtn.disabled = true;
-        seniorAddSubmitBtn.innerHTML = "<span>⌛ Adding to Trusted Memory Store...</span>";
+        seniorAddSubmitBtn.innerHTML = "<span>⌛ Adding Record & Processing Voice LM / Gemma 4...</span>";
 
         const formData = new FormData();
-        formData.append("confirmed_diagnosis", diag);
-        formData.append("fix_steps", steps);
+        if (diag) formData.append("confirmed_diagnosis", diag);
+        if (steps) formData.append("fix_steps", steps);
         if (voice) formData.append("voice_note_path", voice);
         if (seniorSelectedFile) formData.append("file", seniorSelectedFile);
+
+        if (audioFileInput) {
+            formData.append("voice_file", audioFileInput);
+        } else if (recordedAudioBlob) {
+            formData.append("voice_file", recordedAudioBlob, "mic_recording.wav");
+        }
 
         try {
             const response = await fetch('/records/add', {
@@ -297,13 +355,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json();
             seniorAddStatusMsg.style.display = 'block';
-            seniorAddStatusMsg.textContent = `✅ Record #${data.id} added to trusted memory store (provenance: senior_manual_entry)! Instantly searchable by junior technicians.`;
+            
+            let msgText = `✅ Record #${data.id} added to trusted memory store (provenance: ${data.provenance || 'senior_manual_entry'})!`;
+            if (data.raw_transcript) {
+                msgText += ` Transcribed voice note: "${data.raw_transcript.substring(0, 80)}..."`;
+            }
+            msgText += ` Instantly searchable by junior technicians.`;
+            
+            seniorAddStatusMsg.textContent = msgText;
             
             seniorAddDiag.value = '';
             seniorAddSteps.value = '';
             seniorAddVoice.value = '';
+            if (seniorAddAudioFile) seniorAddAudioFile.value = '';
+            recordedAudioBlob = null;
             seniorSelectedFile = null;
             if (seniorAddFileLabel) seniorAddFileLabel.textContent = "Click or Drag & Drop Image File";
+            if (seniorVoiceStatus) {
+                seniorVoiceStatus.textContent = "Upload an audio file (.wav, .mp3, .m4a) or speak directly into your mic. Voice notes are automatically transcribed & cleaned by Gemma 4 into structured records.";
+                seniorVoiceStatus.style.color = "#8b949e";
+            }
 
             updateHealth();
         } catch (err) {

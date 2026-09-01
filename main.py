@@ -137,34 +137,66 @@ async def remember(req: RememberRequest):
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+from memory.voice_transcriber import VoiceTranscriber
+
+voice_transcriber = VoiceTranscriber()
+
 @app.post("/records/add")
 async def add_record(
     file: Optional[UploadFile] = File(None),
+    voice_file: Optional[UploadFile] = File(None),
     image_path: Optional[str] = Form(None),
-    confirmed_diagnosis: str = Form(...),
-    fix_steps: str = Form(...),
+    confirmed_diagnosis: Optional[str] = Form(None),
+    fix_steps: Optional[str] = Form(None),
     voice_note_path: Optional[str] = Form(None)
 ):
     target_path = image_path
-    if file:
+    if file and file.filename:
         file_ext = os.path.splitext(file.filename)[1] or ".png"
         filename = f"senior_{uuid.uuid4().hex[:8]}{file_ext}"
         target_path = os.path.join(uploads_dir, filename)
         with open(target_path, "wb") as f:
             f.write(await file.read())
 
+    saved_voice_path = voice_note_path
+    if voice_file and voice_file.filename:
+        v_ext = os.path.splitext(voice_file.filename)[1] or ".wav"
+        v_name = f"voice_{uuid.uuid4().hex[:8]}{v_ext}"
+        saved_voice_path = os.path.join(uploads_dir, v_name)
+        with open(saved_voice_path, "wb") as f:
+            f.write(await voice_file.read())
+
+    # Transcribe & clean voice note if voice file is provided
+    provenance = "senior_manual_entry"
+    raw_transcript = ""
+    if saved_voice_path and os.path.exists(saved_voice_path):
+        provenance = "senior_voice_entry"
+        voice_res = voice_transcriber.process_senior_voice_note(
+            audio_path=saved_voice_path,
+            llm_engine=coordinator_agent.llm_engine
+        )
+        raw_transcript = voice_res.get("raw_transcript", "")
+        if not confirmed_diagnosis:
+            confirmed_diagnosis = voice_res.get("confirmed_diagnosis", "Senior Voice Note Diagnosis")
+        if not fix_steps:
+            fix_steps = voice_res.get("fix_steps", raw_transcript)
+
+    final_diag = confirmed_diagnosis or "Senior Manual Technical Entry"
+    final_fix = fix_steps or "Standard Senior Inspection Steps"
+
     res = memory_agent.remember(
         image_path=target_path,
-        confirmed_diagnosis=confirmed_diagnosis,
-        fix_steps=fix_steps,
-        voice_note_path=voice_note_path,
+        confirmed_diagnosis=final_diag,
+        fix_steps=final_fix,
+        voice_note_path=saved_voice_path,
         confidence_at_capture=0.98,
-        provenance="senior_manual_entry"
+        provenance=provenance
     )
     return {
         "status": "record_added",
         "id": res["id"],
-        "provenance": "senior_manual_entry",
+        "provenance": provenance,
+        "raw_transcript": raw_transcript,
         "confirmed": True,
         "record": res
     }
