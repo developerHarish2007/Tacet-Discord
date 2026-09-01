@@ -15,6 +15,15 @@ class VoiceTranscriber:
     def _get_whisper_model(self):
         if self._whisper_model is None:
             try:
+                import imageio_ffmpeg
+                ff_path = imageio_ffmpeg.get_ffmpeg_exe()
+                ff_dir = os.path.dirname(ff_path)
+                if ff_dir not in os.environ.get("PATH", ""):
+                    os.environ["PATH"] += os.pathsep + ff_dir
+            except Exception:
+                pass
+
+            try:
                 import whisper
                 print("Loading local Whisper model (tiny.en)...")
                 self._whisper_model = whisper.load_model("tiny.en")
