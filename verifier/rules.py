@@ -1,5 +1,11 @@
 from typing import Dict, Any, Tuple, Optional
 
+"""
+Canonical Score Note (Fix 3):
+mean_confidence represents the MC-Dropout-averaged score across 20 stochastic forward passes.
+It serves as the single canonical Perception confidence metric across all rules and agent evaluations.
+"""
+
 def evaluate_stage_a_rules(
     mean_confidence: float,
     variance: float,
