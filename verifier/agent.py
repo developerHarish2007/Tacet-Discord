@@ -31,10 +31,11 @@ class VerifierAgent:
         mean_confidence = float(percept_res["mean_confidence"])
         variance = float(percept_res["variance"])
 
-        # 2. Correlation Analysis using canonical mean_confidence score
+        # 2. Correlation Analysis using canonical mean_confidence score & paired telemetry profile
         correl_res = self.correlation.correlate(
             telemetry_mode=telemetry_mode,
-            perception_score=mean_confidence
+            perception_score=mean_confidence,
+            file_path=image_path
         )
         
         agrees_with_perception = bool(correl_res["agrees_with_perception"])
