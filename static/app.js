@@ -155,25 +155,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Render Junior View & Live Reasoning Trace
+    // Render Junior View & High-Impact Reasoning Trace
     function renderJuniorView(data) {
         const trace = data.reasoning_trace || {};
         const pTrace = trace.perception || {};
         const cTrace = trace.correlation || {};
         const mTrace = trace.memory || {};
         const vTrace = trace.verifier || {};
+        const traceCard = document.querySelector('.trace-card');
+
+        // Check if conflict occurred
+        const isConflict = cTrace.agrees === false;
+        if (traceCard) {
+            if (isConflict) {
+                traceCard.classList.add('conflict-active');
+            } else {
+                traceCard.classList.remove('conflict-active');
+            }
+        }
 
         // 1. Update Prominent Live Reasoning Trace Panel
         document.getElementById('trace-percept-score').textContent = `Score: ${(pTrace.score || 0).toFixed(4)}`;
         document.getElementById('trace-percept-desc').textContent = pTrace.summary || '--';
 
-        document.getElementById('trace-correl-rul').textContent = `${cTrace.predicted_rul || 0} hrs`;
+        const correlHead = document.getElementById('trace-correl-rul');
+        if (cTrace.agrees === false) {
+            correlHead.innerHTML = `${cTrace.predicted_rul || 0} hrs <span class="conflict-badge">DISAGREES ❌</span>`;
+        } else {
+            correlHead.textContent = `${cTrace.predicted_rul || 0} hrs`;
+        }
         document.getElementById('trace-correl-desc').textContent = cTrace.summary || '--';
 
         document.getElementById('trace-memory-sim').textContent = `${((mTrace.similarity || 0)*100).toFixed(1)}%`;
         document.getElementById('trace-memory-desc').textContent = mTrace.summary || '--';
 
-        document.getElementById('trace-verifier-tier').textContent = `TIER ${vTrace.tier || data.tier}`;
+        const verifierHead = document.getElementById('trace-verifier-tier');
+        if (data.tier === 2 && isConflict) {
+            verifierHead.innerHTML = `TIER ${data.tier} <span class="conflict-badge">DOWNGRADE ⚡</span>`;
+        } else {
+            verifierHead.textContent = `TIER ${data.tier}`;
+        }
         document.getElementById('trace-verifier-desc').textContent = vTrace.reasoning || data.verifier_reasoning;
 
         // 2. Verdict Banner
@@ -298,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     image_path: currentImagePath,
                     confirmed_diagnosis: confirmedDiag,
                     fix_steps: fixSteps,
-                    voice_note_path: noteText ? `/audio/${noteText.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp3` : None,
+                    voice_note_path: noteText ? `/audio/${noteText.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp3` : null,
                     confidence_at_capture: 0.98
                 })
             });
