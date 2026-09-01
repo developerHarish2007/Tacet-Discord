@@ -331,9 +331,9 @@ document.addEventListener('DOMContentLoaded', () => {
         seniorAddSubmitBtn.innerHTML = "<span>⌛ Adding Record & Processing Voice LM / Gemma 4...</span>";
 
         const formData = new FormData();
-        if (diag) formData.append("confirmed_diagnosis", diag);
-        if (steps) formData.append("fix_steps", steps);
-        if (voice) formData.append("voice_note_path", voice);
+        formData.append("confirmed_diagnosis", diag || "");
+        formData.append("fix_steps", steps || "");
+        formData.append("voice_note_path", voice || "");
         if (seniorSelectedFile) formData.append("file", seniorSelectedFile);
 
         if (audioFileInput) {

@@ -143,12 +143,12 @@ voice_transcriber = VoiceTranscriber()
 
 @app.post("/records/add")
 async def add_record(
-    file: Optional[UploadFile] = File(None),
-    voice_file: Optional[UploadFile] = File(None),
-    image_path: Optional[str] = Form(None),
-    confirmed_diagnosis: Optional[str] = Form(None),
-    fix_steps: Optional[str] = Form(None),
-    voice_note_path: Optional[str] = Form(None)
+    file: Optional[UploadFile] = File(default=None),
+    voice_file: Optional[UploadFile] = File(default=None),
+    image_path: Optional[str] = Form(default=None),
+    confirmed_diagnosis: Optional[str] = Form(default=None),
+    fix_steps: Optional[str] = Form(default=None),
+    voice_note_path: Optional[str] = Form(default=None)
 ):
     target_path = image_path
     if file and file.filename:
