@@ -6,13 +6,17 @@ from typing import List, Dict, Any, Tuple, Optional
 
 class GroundedLLMReasoningEngine:
     def __init__(self):
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+        except ImportError:
+            pass
         self.provider = os.getenv("LLM_PROVIDER", "auto").lower()
-        self.local_model = os.getenv("LOCAL_MODEL")
+        self.local_model = os.getenv("LOCAL_MODEL", "gemma4:latest")
         self.gemini_key = os.getenv("GEMINI_API_KEY")
         self.groq_key = os.getenv("GROQ_API_KEY")
         self.nvidia_key = os.getenv("NVIDIA_API_KEY")
         self.openai_key = os.getenv("OPENAI_API_KEY")
-        self._auto_detect_local_model()
 
     def _auto_detect_local_model(self):
         """Auto-detects installed Ollama model from local server tags if LOCAL_MODEL is not set"""
@@ -185,11 +189,47 @@ class GroundedLLMReasoningEngine:
         # -------------------------------------------------------------
         print("[LLM Routing] ai_mode='cloud' -> Attempting Cloud API call.")
 
-        # 1. Gemini API
-        active_gemini_key = cloud_api_key or self.gemini_key
-        if active_gemini_key:
+        # Smart Key Routing based on prefix
+        target_groq_key = cloud_api_key if (cloud_api_key and cloud_api_key.startswith("gsk_")) else self.groq_key
+        target_gemini_key = cloud_api_key if (cloud_api_key and cloud_api_key.startswith("AIza")) else self.gemini_key
+        target_openai_key = cloud_api_key if (cloud_api_key and cloud_api_key.startswith("sk-")) else self.openai_key
+        target_nvidia_key = cloud_api_key if (cloud_api_key and cloud_api_key.startswith("nvapi-")) else self.nvidia_key
+
+        if cloud_api_key and not (target_groq_key or target_gemini_key or target_openai_key or target_nvidia_key):
+            if cloud_api_key.startswith("gsk_"):
+                target_groq_key = cloud_api_key
+            else:
+                target_groq_key = cloud_api_key
+
+        # 1. Groq API (Primary for gsk_ keys)
+        if target_groq_key:
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {target_groq_key.strip()}",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+            for model_name in ["openai/gpt-oss-120b", "groq/compound-mini", "openai/gpt-oss-20b"]:
+                try:
+                    url = "https://api.groq.com/openai/v1/chat/completions"
+                    payload = {
+                        "model": model_name,
+                        "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+                        "temperature": 0.2
+                    }
+                    req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers=headers)
+                    with urllib.request.urlopen(req, timeout=12) as resp:
+                        data = json.loads(resp.read().decode('utf-8'))
+                        content = data["choices"][0]["message"]["content"].strip()
+                        if content:
+                            print(f"[LLM Routing] Groq Cloud API ({model_name}) succeeded.")
+                            return content
+                except Exception as e:
+                    print(f"Cloud Groq API model '{model_name}' failed ({e}); trying next.")
+
+        # 2. Gemini API
+        if target_gemini_key:
             try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={active_gemini_key}"
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={target_gemini_key}"
                 payload = {"contents": [{"parts": [{"text": f"{system_prompt}\n\n{user_prompt}"}]}]}
                 req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json"})
                 with urllib.request.urlopen(req, timeout=12) as resp:
@@ -198,26 +238,8 @@ class GroundedLLMReasoningEngine:
             except Exception as e:
                 print(f"Cloud Gemini API call failed ({e}); checking next provider.")
 
-        # 2. Groq API
-        active_groq_key = cloud_api_key or self.groq_key
-        if active_groq_key:
-            try:
-                url = "https://api.groq.com/openai/v1/chat/completions"
-                payload = {
-                    "model": "llama-3.1-8b-instant",
-                    "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-                    "temperature": 0.2
-                }
-                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {active_groq_key}"})
-                with urllib.request.urlopen(req, timeout=12) as resp:
-                    data = json.loads(resp.read().decode('utf-8'))
-                    return data["choices"][0]["message"]["content"].strip()
-            except Exception as e:
-                print(f"Cloud Groq API call failed ({e}); checking next provider.")
-
         # 3. NVIDIA Nim API
-        active_nvidia_key = cloud_api_key or self.nvidia_key
-        if active_nvidia_key:
+        if target_nvidia_key:
             try:
                 url = "https://integrate.api.nvidia.com/v1/chat/completions"
                 payload = {
@@ -225,7 +247,7 @@ class GroundedLLMReasoningEngine:
                     "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
                     "temperature": 0.2
                 }
-                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {active_nvidia_key}"})
+                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {target_nvidia_key}"})
                 with urllib.request.urlopen(req, timeout=12) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
                     return data["choices"][0]["message"]["content"].strip()
@@ -233,8 +255,7 @@ class GroundedLLMReasoningEngine:
                 print(f"Cloud NVIDIA API call failed ({e}); checking next provider.")
 
         # 4. OpenAI API
-        active_openai_key = cloud_api_key or self.openai_key
-        if active_openai_key:
+        if target_openai_key:
             try:
                 url = "https://api.openai.com/v1/chat/completions"
                 payload = {
@@ -242,7 +263,7 @@ class GroundedLLMReasoningEngine:
                     "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
                     "temperature": 0.2
                 }
-                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {active_openai_key}"})
+                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {target_openai_key}"})
                 with urllib.request.urlopen(req, timeout=12) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
                     return data["choices"][0]["message"]["content"].strip()
