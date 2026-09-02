@@ -1652,7 +1652,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updatePipelineTraceBtnVisibility() {
         if (!pipelineTraceBtn) return;
-        pipelineTraceBtn.style.display = currentMode === 'junior-ask' ? 'inline-flex' : 'none';
+        if (currentMode === 'junior-ask') {
+            pipelineTraceBtn.style.display = 'inline-flex';
+            requestAnimationFrame(() => {
+                pipelineTraceBtn.classList.remove('hidden-trace-btn');
+            });
+        } else {
+            pipelineTraceBtn.classList.add('hidden-trace-btn');
+            setTimeout(() => {
+                if (currentMode !== 'junior-ask') {
+                    pipelineTraceBtn.style.display = 'none';
+                }
+            }, 260);
+        }
     }
 
     const _panelObserver = new MutationObserver(() => updatePipelineTraceBtnVisibility());

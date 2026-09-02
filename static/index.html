@@ -115,7 +115,14 @@
             </nav>
 
             <div class="nav-actions-right">
-                <!-- Interactive Hover Button (About Quick Launch) -->
+                <!-- 5-Agent Pipeline Trace Button (Positioned next to Junior tab) -->
+                <button class="drawer-pill-btn" id="open-slide-drawer-btn" type="button" title="Inspect 5-Agent Pipeline Trace">
+                    <svg class="btn-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg>
+                    <span>5-Agent Pipeline Trace</span>
+                    <span id="drawer-badge-indicator" class="drawer-badge">READY</span>
+                </button>
+
+                <!-- Interactive Hover Button (About Quick Launch - Positioned at the end) -->
                 <button type="button" class="interactive-hover-btn" id="interactive-about-btn" title="Learn About 5-Agent Architecture">
                     <span class="btn-idle-text">About Architecture</span>
                     <div class="btn-hover-content">
@@ -123,13 +130,6 @@
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                     </div>
                     <div class="btn-hover-bubble"></div>
-                </button>
-
-                <!-- 5-Agent Pipeline Trace Button (Available in Junior Section) -->
-                <button class="drawer-pill-btn" id="open-slide-drawer-btn" type="button" title="Inspect 5-Agent Pipeline Trace">
-                    <svg class="btn-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg>
-                    <span>5-Agent Pipeline Trace</span>
-                    <span id="drawer-badge-indicator" class="drawer-badge">READY</span>
                 </button>
             </div>
         </div>
