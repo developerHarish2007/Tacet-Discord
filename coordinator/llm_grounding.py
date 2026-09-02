@@ -163,17 +163,18 @@ class GroundedLLMReasoningEngine:
             system_prompt = (
                 "You are TACET DISCORD's Senior Master Engineering Copilot. "
                 "The junior technician is asking for technical guidance on an issue. "
-                "Synthesize a personalized, clear, step-by-step technical response tailored directly to their question. "
-                "Incorporate the provided historical evidence records as your foundational grounded truth, explaining the 'why' and 'how' behind the fix steps in a supportive, highly expert tone. "
-                "Explicitly cite the relevant record IDs (e.g. Record #...) to validate your advice."
+                "Synthesize a concise, clear, step-by-step technical response tailored directly to their question (maximum 3-5 bullet steps, under 200 words). "
+                "Incorporate the provided historical evidence records as your foundational grounded truth. "
+                "Explicitly cite the relevant record IDs (e.g. Record #...) to validate your advice. "
+                "Do NOT generate long manuals, giant markdown tables, or unnecessary filler."
             )
             user_prompt = f"Junior Question: {question}\n\nGrounding Evidence Records:\n{evidence_text}"
         else:
             system_prompt = (
                 "You are TACET DISCORD's Senior Master Engineering Copilot. "
                 "The junior technician is asking for technical guidance, but no direct historical database record matches this exact issue. "
-                "Provide a rich, personalized, step-by-step technical troubleshooting explanation tailored directly to their question using expert engineering domain knowledge. "
-                "Make it practical, clear, and actionable. Do NOT invent fake record numbers or cite fake database IDs."
+                "Provide a concise, practical, step-by-step troubleshooting answer tailored directly to their question (maximum 3-5 bullet steps, under 200 words). "
+                "Make it practical, clear, and actionable. Do NOT invent fake record numbers or cite fake database IDs. Do NOT write giant manuals or long tables."
             )
             user_prompt = f"Junior Question: {question}\n\nNote: No matching database records available."
 
@@ -214,7 +215,8 @@ class GroundedLLMReasoningEngine:
                     payload = {
                         "model": model_name,
                         "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-                        "temperature": 0.2
+                        "temperature": 0.2,
+                        "max_tokens": 350
                     }
                     req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers=headers)
                     with urllib.request.urlopen(req, timeout=12) as resp:
@@ -230,7 +232,10 @@ class GroundedLLMReasoningEngine:
         if target_gemini_key:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={target_gemini_key}"
-                payload = {"contents": [{"parts": [{"text": f"{system_prompt}\n\n{user_prompt}"}]}]}
+                payload = {
+                    "contents": [{"parts": [{"text": f"{system_prompt}\n\n{user_prompt}"}]}],
+                    "generationConfig": {"maxOutputTokens": 350, "temperature": 0.2}
+                }
                 req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json"})
                 with urllib.request.urlopen(req, timeout=12) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
@@ -245,7 +250,8 @@ class GroundedLLMReasoningEngine:
                 payload = {
                     "model": "google/gemma-2-9b-it",
                     "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-                    "temperature": 0.2
+                    "temperature": 0.2,
+                    "max_tokens": 350
                 }
                 req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {target_nvidia_key}"})
                 with urllib.request.urlopen(req, timeout=12) as resp:
@@ -261,7 +267,8 @@ class GroundedLLMReasoningEngine:
                 payload = {
                     "model": "gpt-3.5-turbo",
                     "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-                    "temperature": 0.2
+                    "temperature": 0.2,
+                    "max_tokens": 350
                 }
                 req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {target_openai_key}"})
                 with urllib.request.urlopen(req, timeout=12) as resp:
