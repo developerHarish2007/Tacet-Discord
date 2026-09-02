@@ -925,6 +925,78 @@ document.addEventListener('DOMContentLoaded', () => {
     let audioChunks = [];
     let recordedAudioBlob = null;
 
+    let audioCtx = null;
+    let analyserNode = null;
+    let animFrameId = null;
+
+    const waveformWrapper = document.getElementById('audio-waveform-wrapper');
+    const audioCanvas = document.getElementById('senior-audio-canvas');
+
+    function drawRealTimeAudioWaveform() {
+        if (!analyserNode || !audioCanvas) return;
+        const ctx = audioCanvas.getContext('2d');
+        const width = audioCanvas.width;
+        const height = audioCanvas.height;
+
+        const bufferLength = analyserNode.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        function renderFrame() {
+            animFrameId = requestAnimationFrame(renderFrame);
+            analyserNode.getByteFrequencyData(dataArray);
+
+            ctx.clearRect(0, 0, width, height);
+
+            const barCount = 18;
+            const barWidth = 6;
+            const gap = 5;
+            const totalW = barCount * (barWidth + gap) - gap;
+            const startX = (width - totalW) / 2;
+
+            for (let i = 0; i < barCount; i++) {
+                const dataIdx = Math.floor((i / barCount) * (bufferLength * 0.75));
+                const value = dataArray[dataIdx] || 0;
+                
+                const minH = 6;
+                const maxH = height - 4;
+                const barH = Math.max(minH, (value / 255) * maxH);
+
+                const x = startX + i * (barWidth + gap);
+                const y = (height - barH) / 2;
+
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(x, y, barWidth, barH, 3);
+                } else {
+                    ctx.rect(x, y, barWidth, barH);
+                }
+
+                if (value > 160) {
+                    ctx.fillStyle = 'var(--accent-red)';
+                } else if (value > 90) {
+                    ctx.fillStyle = 'var(--accent-amber)';
+                } else {
+                    ctx.fillStyle = 'var(--accent)';
+                }
+                ctx.fill();
+            }
+        }
+        renderFrame();
+    }
+
+    function stopAudioWaveformVisualizer() {
+        if (animFrameId) {
+            cancelAnimationFrame(animFrameId);
+            animFrameId = null;
+        }
+        if (audioCtx) {
+            audioCtx.close().catch(() => {});
+            audioCtx = null;
+        }
+        analyserNode = null;
+        if (waveformWrapper) waveformWrapper.style.display = 'none';
+    }
+
     if (seniorVoiceRecBtn) {
         seniorVoiceRecBtn.addEventListener('click', async () => {
             if (!mediaRecorder || mediaRecorder.state === 'inactive') {
@@ -933,12 +1005,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     mediaRecorder = new MediaRecorder(stream);
                     audioChunks = [];
 
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    analyserNode = audioCtx.createAnalyser();
+                    analyserNode.fftSize = 64;
+                    const source = audioCtx.createMediaStreamSource(stream);
+                    source.connect(analyserNode);
+
+                    if (waveformWrapper) waveformWrapper.style.display = 'flex';
+                    drawRealTimeAudioWaveform();
+
                     mediaRecorder.ondataavailable = (event) => {
                         if (event.data.size > 0) audioChunks.push(event.data);
                     };
 
                     mediaRecorder.onstop = () => {
                         recordedAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        stopAudioWaveformVisualizer();
                         if (seniorVoiceStatus) {
                             seniorVoiceStatus.textContent = "Voice note recorded successfully (ready for submission).";
                             seniorVoiceStatus.style.color = "var(--accent-green)";

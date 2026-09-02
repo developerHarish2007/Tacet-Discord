@@ -414,14 +414,30 @@
 
                 <div class="form-group">
                     <label class="form-label">Voice Note Capture (Audio):</label>
-                    <div class="audio-input-row">
-                        <input type="file" id="senior-add-audio-file" accept="audio/*" class="form-input">
-                        <button type="button" id="senior-voice-rec-btn" class="btn btn-primary">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-                            <span>Record Mic</span>
-                        </button>
+                    
+                    <div class="voice-recorder-container">
+                        <!-- Top: Mic Record Button & Dynamic Audio Waveform Visualizer -->
+                        <div class="voice-rec-top-row">
+                            <button type="button" id="senior-voice-rec-btn" class="btn btn-primary btn-auto-width">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                                <span>Record Mic</span>
+                            </button>
+                            
+                            <!-- Real-Time Pitch Audio Waveform Canvas (Vertical Cylinder Pills) -->
+                            <div class="audio-waveform-wrapper" id="audio-waveform-wrapper" style="display:none;">
+                                <canvas id="senior-audio-canvas" width="220" height="36"></canvas>
+                                <span class="rec-dot-live">● REC</span>
+                            </div>
+                        </div>
+
+                        <!-- Below: Choose Audio File -->
+                        <div class="voice-file-row">
+                            <label class="voice-file-label" for="senior-add-audio-file">Or Choose Pre-Recorded Audio File:</label>
+                            <input type="file" id="senior-add-audio-file" accept="audio/*" class="form-input">
+                        </div>
                     </div>
-                    <p id="senior-voice-status" style="font-size:0.75rem; color:var(--foreground-muted); margin-top:5px;">Upload audio (.wav, .mp3, .m4a) or record via mic. Voice notes are automatically transcribed & cleaned by Gemma 4.</p>
+
+                    <p id="senior-voice-status" style="font-size:0.75rem; color:var(--foreground-muted); margin-top:6px;">Speak directly into your mic or choose an audio file (.wav, .mp3, .m4a). Voice notes are automatically transcribed & cleaned by Gemma 4 into structured records.</p>
                 </div>
 
                 <div class="form-group">

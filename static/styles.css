@@ -2241,7 +2241,70 @@ body {
     box-shadow: 0 0 6px var(--accent-amber-glow);
 }
 
-/* Audio Recording */
+/* Audio Recording & Real-Time Waveform Visualizer */
+.voice-recorder-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+    transition: border-color 0.25s ease;
+}
+
+.voice-recorder-container:hover {
+    border-color: var(--border-hover);
+}
+
+.voice-rec-top-row {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+}
+
+.audio-waveform-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--bg-deep);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-pill);
+    padding: 0.25rem 0.8rem 0.25rem 0.6rem;
+    box-shadow: 0 0 16px var(--accent-glow);
+    animation: blurFadeIn 0.3s ease both;
+}
+
+#senior-audio-canvas {
+    width: 220px;
+    height: 36px;
+    border-radius: var(--radius-pill);
+}
+
+.rec-dot-live {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--accent-red);
+    font-family: var(--font-mono);
+    animation: breathe 1.2s ease-in-out infinite;
+    white-space: nowrap;
+}
+
+.voice-file-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    border-top: 1px dashed var(--border);
+    padding-top: 0.65rem;
+}
+
+.voice-file-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--foreground-subtle);
+}
+
 .audio-input-row {
     display: flex;
     gap: 0.55rem;
