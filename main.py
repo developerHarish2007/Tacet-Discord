@@ -143,12 +143,12 @@ voice_transcriber = VoiceTranscriber()
 
 @app.post("/records/add")
 async def add_record(
-    file: Optional[UploadFile] = File(default=None),
-    voice_file: Optional[UploadFile] = File(default=None),
-    image_path: Optional[str] = Form(default=None),
-    confirmed_diagnosis: Optional[str] = Form(default=None),
-    fix_steps: Optional[str] = Form(default=None),
-    voice_note_path: Optional[str] = Form(default=None)
+    file: Optional[UploadFile] = None,
+    voice_file: Optional[UploadFile] = None,
+    image_path: Optional[str] = Form(default=""),
+    confirmed_diagnosis: Optional[str] = Form(default=""),
+    fix_steps: Optional[str] = Form(default=""),
+    voice_note_path: Optional[str] = Form(default="")
 ):
     target_path = image_path
     if file and file.filename:
@@ -229,7 +229,9 @@ async def ask_junior(
     file: Optional[UploadFile] = File(None),
     image_path: Optional[str] = Form(None),
     question: str = Form(...),
-    telemetry_mode: Optional[str] = Form("normal")
+    telemetry_mode: Optional[str] = Form("normal"),
+    ai_mode: Optional[str] = Form("local"),
+    cloud_api_key: Optional[str] = Form(None)
 ):
     target_path = image_path
     if file:
@@ -242,7 +244,9 @@ async def ask_junior(
     return coordinator_agent.ask_junior(
         question=question,
         image_path=target_path,
-        telemetry_mode=telemetry_mode
+        telemetry_mode=telemetry_mode,
+        ai_mode=ai_mode or "local",
+        cloud_api_key=cloud_api_key
     )
 
 class AcquireRequest(BaseModel):

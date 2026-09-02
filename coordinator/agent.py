@@ -102,13 +102,15 @@ class CoordinatorAgent:
         self,
         question: str,
         image_path: Optional[str] = None,
-        telemetry_mode: str = "normal"
+        telemetry_mode: str = "normal",
+        ai_mode: str = "local",
+        cloud_api_key: Optional[str] = None
     ) -> dict:
         """
         Junior Ask Entrypoint (Photo + Text Question):
         1. Runs perception analysis if image is provided.
         2. Retrieves top 1-3 grounded records via MemoryAgent hybrid matcher.
-        3. Calls Grounded LLM Reasoning Engine.
+        3. Calls Grounded LLM Reasoning Engine (respecting strict local vs cloud toggle).
         4. Runs explicit Hallucination-Check Gate.
         5. Verifies output through VerifierAgent.
         """
@@ -131,7 +133,9 @@ class CoordinatorAgent:
         llm_grounding_res = self.llm_engine.generate_and_verify_answer(
             question=question,
             retrieved_records=retrieved_records,
-            perception_output=percept_res
+            perception_output=percept_res,
+            ai_mode=ai_mode,
+            cloud_api_key=cloud_api_key
         )
 
         # 4. Verifier Cross-Examination & Confidence Tiering

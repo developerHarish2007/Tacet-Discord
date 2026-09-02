@@ -37,7 +37,9 @@ class GroundedLLMReasoningEngine:
         question: str,
         retrieved_records: List[Dict[str, Any]],
         perception_output: Optional[Dict[str, Any]] = None,
-        correlation_output: Optional[Dict[str, Any]] = None
+        correlation_output: Optional[Dict[str, Any]] = None,
+        ai_mode: str = "local",
+        cloud_api_key: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generates grounded or general-knowledge LLM answer using provided evidence records or domain knowledge,
@@ -73,8 +75,14 @@ class GroundedLLMReasoningEngine:
 
         evidence_text = "\n".join(evidence_summary_lines) if evidence_summary_lines else "No matching historical records found."
 
-        # 2. Call LLM to generate raw draft answer
-        raw_llm_output = self._call_llm_backend(question, evidence_text, has_strong_match)
+        # 2. Call LLM to generate raw draft answer with strict mode routing
+        raw_llm_output = self._call_llm_backend(
+            question=question,
+            evidence_text=evidence_text,
+            has_strong_match=has_strong_match,
+            ai_mode=ai_mode,
+            cloud_api_key=cloud_api_key
+        )
 
         # 3. Format draft answer with label if no strong record match
         if not has_strong_match:
@@ -107,15 +115,45 @@ class GroundedLLMReasoningEngine:
             "evidence_text": evidence_text
         }
 
+    def _call_local_engine(self, system_prompt: str, user_prompt: str, question: str) -> str:
+        """Executes strictly local inference via Ollama or Local Rule Synthesizer (0 Cloud API calls)"""
+        try:
+            self._auto_detect_local_model()
+            url = "http://localhost:11434/api/generate"
+            payload = {
+                "model": self.local_model,
+                "prompt": f"{system_prompt}\n\n{user_prompt}",
+                "stream": False
+            }
+            req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                ans = data.get("response", "").strip()
+                if ans:
+                    return ans
+        except Exception as e:
+            print(f"Local Ollama ({self.local_model}) query failed: {e}")
+
+        # Local Technical Rule Synthesizer
+        words = [w for w in re.findall(r'\b[a-z0-9]+\b', question.lower()) if len(w) > 3]
+        topic = ", ".join(words[:4]) if words else "the reported component"
+        return (
+            f"Regarding '{question}', immediate technical assessment for {topic} recommends isolating the area, "
+            f"inspecting mechanical alignments, and verifying pneumatic/electrical pressure thresholds. "
+            f"Confirm diagnostic readings with senior technician before restarting shift operations."
+        )
+
     def _call_llm_backend(
         self,
         question: str,
         evidence_text: str,
-        has_strong_match: bool
+        has_strong_match: bool,
+        ai_mode: str = "local",
+        cloud_api_key: Optional[str] = None
     ) -> str:
         """
-        Calls LLM backend (Hosted API -> Local Gemma -> General Knowledge Synthesizer).
-        Always queries LLM with junior's specific question for best-effort reasoning.
+        Calls LLM backend (Hosted Cloud API vs Strict Local Ollama Gemma).
+        Guarantees 0 Cloud API calls when ai_mode == 'local'.
         """
         if has_strong_match:
             system_prompt = (
@@ -135,20 +173,34 @@ class GroundedLLMReasoningEngine:
             )
             user_prompt = f"Junior Question: {question}\n\nNote: No matching database records available."
 
-        # 1. Gemini API Override
-        if self.gemini_key:
+        # -------------------------------------------------------------
+        # STRICT ROUTING CHECK: If mode is LOCAL, bypass ALL Cloud APIs!
+        # -------------------------------------------------------------
+        if ai_mode == "local":
+            print("[LLM Routing] ai_mode='local' -> Bypassing all Cloud APIs. Using Local Ollama / Local Synthesis.")
+            return self._call_local_engine(system_prompt, user_prompt, question)
+
+        # -------------------------------------------------------------
+        # Mode is CLOUD -> Query Online Cloud API
+        # -------------------------------------------------------------
+        print("[LLM Routing] ai_mode='cloud' -> Attempting Cloud API call.")
+
+        # 1. Gemini API
+        active_gemini_key = cloud_api_key or self.gemini_key
+        if active_gemini_key:
             try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.gemini_key}"
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={active_gemini_key}"
                 payload = {"contents": [{"parts": [{"text": f"{system_prompt}\n\n{user_prompt}"}]}]}
                 req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json"})
-                with urllib.request.urlopen(req, timeout=10) as resp:
+                with urllib.request.urlopen(req, timeout=12) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
                     return data["candidates"][0]["content"]["parts"][0]["text"].strip()
             except Exception as e:
-                print(f"Gemini API call failed ({e}); checking next provider.")
+                print(f"Cloud Gemini API call failed ({e}); checking next provider.")
 
-        # 2. Groq API Override
-        if self.groq_key:
+        # 2. Groq API
+        active_groq_key = cloud_api_key or self.groq_key
+        if active_groq_key:
             try:
                 url = "https://api.groq.com/openai/v1/chat/completions"
                 payload = {
@@ -156,15 +208,16 @@ class GroundedLLMReasoningEngine:
                     "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
                     "temperature": 0.2
                 }
-                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.groq_key}"})
-                with urllib.request.urlopen(req, timeout=10) as resp:
+                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {active_groq_key}"})
+                with urllib.request.urlopen(req, timeout=12) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
                     return data["choices"][0]["message"]["content"].strip()
             except Exception as e:
-                print(f"Groq API call failed ({e}); checking next provider.")
+                print(f"Cloud Groq API call failed ({e}); checking next provider.")
 
-        # 3. NVIDIA Nim API Override
-        if self.nvidia_key:
+        # 3. NVIDIA Nim API
+        active_nvidia_key = cloud_api_key or self.nvidia_key
+        if active_nvidia_key:
             try:
                 url = "https://integrate.api.nvidia.com/v1/chat/completions"
                 payload = {
@@ -172,15 +225,16 @@ class GroundedLLMReasoningEngine:
                     "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
                     "temperature": 0.2
                 }
-                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.nvidia_key}"})
-                with urllib.request.urlopen(req, timeout=10) as resp:
+                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {active_nvidia_key}"})
+                with urllib.request.urlopen(req, timeout=12) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
                     return data["choices"][0]["message"]["content"].strip()
             except Exception as e:
-                print(f"NVIDIA API call failed ({e}); checking next provider.")
+                print(f"Cloud NVIDIA API call failed ({e}); checking next provider.")
 
-        # 4. OpenAI API Override
-        if self.openai_key:
+        # 4. OpenAI API
+        active_openai_key = cloud_api_key or self.openai_key
+        if active_openai_key:
             try:
                 url = "https://api.openai.com/v1/chat/completions"
                 payload = {
@@ -188,39 +242,15 @@ class GroundedLLMReasoningEngine:
                     "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
                     "temperature": 0.2
                 }
-                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.openai_key}"})
-                with urllib.request.urlopen(req, timeout=10) as resp:
+                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json", "Authorization": f"Bearer {active_openai_key}"})
+                with urllib.request.urlopen(req, timeout=12) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
                     return data["choices"][0]["message"]["content"].strip()
             except Exception as e:
-                print(f"OpenAI API call failed ({e}); checking local Gemma.")
+                print(f"Cloud OpenAI API call failed ({e}); falling back to local.")
 
-        # 5. Local Gemma Support (via Ollama http://localhost:11434/api/generate)
-        try:
-            self._auto_detect_local_model()
-            url = "http://localhost:11434/api/generate"
-            payload = {
-                "model": self.local_model,
-                "prompt": f"{system_prompt}\n\n{user_prompt}",
-                "stream": False
-            }
-            req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                data = json.loads(resp.read().decode('utf-8'))
-                ans = data.get("response", "").strip()
-                if ans:
-                    return ans
-        except Exception as e:
-            print(f"Local Ollama ({self.local_model}) query failed: {e}")
-
-        # 6. Technical Synthesizer (Question-specific fallback if all LLMs fail)
-        words = [w for w in re.findall(r'\b[a-z0-9]+\b', question.lower()) if len(w) > 3]
-        topic = ", ".join(words[:4]) if words else "the reported component"
-        return (
-            f"Regarding '{question}', immediate technical assessment for {topic} recommends isolating the area, "
-            f"cleaning any spilled liquid or physical debris, drying exposed electrical housings, inspecting sensor ports, "
-            f"and performing a dry test run before resuming automated machine cycle."
-        )
+        # Fallback to local engine if cloud calls failed or no keys present
+        return self._call_local_engine(system_prompt, user_prompt, question)
 
     def _hallucination_check_gate(
         self,
