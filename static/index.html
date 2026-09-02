@@ -186,6 +186,42 @@
                 <div style="text-align:center;">
                     <img id="jask-heatmap-img" src="" alt="Heatmap" style="max-width:100%; border-radius:6px; border:1px solid var(--border-color);">
                 </div>
+
+                <!-- Perception Confidence Gauge & MC Dropout Pass Dot-Plot -->
+                <div class="perception-metrics-compact" style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-color);">
+                    <!-- 1. Horizontal Confidence Gauge with Tier-1 Threshold Marker -->
+                    <div style="margin-bottom: 0.75rem;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:600; color:var(--text-muted); margin-bottom:0.3rem;">
+                            <span>Perception Confidence (Mean)</span>
+                            <span id="perception-gauge-val">0.0000</span>
+                        </div>
+                        <div class="gauge-container" style="position:relative; width:100%; height:14px; background:rgba(0,0,0,0.5); border-radius:7px; border:1px solid var(--border-color); overflow:hidden;">
+                            <div id="perception-gauge-fill" style="height:100%; width:0%; transition:width 0.4s ease; border-radius:6px; background:#4ade80;"></div>
+                            <div title="Tier 1 Threshold (0.50)" style="position:absolute; top:0; left:50%; width:2px; height:100%; background:#ffffff; box-shadow:0 0 4px #ffffff; z-index:2;"></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.68rem; color:var(--text-muted); margin-top:0.25rem;">
+                            <span>0.0</span>
+                            <span style="color:#ffffff; font-weight:700;">▲ Tier-1 Threshold (0.50)</span>
+                            <span>1.0</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. Dot Plot / Scatter Plot for MC Dropout Pass Scores -->
+                    <div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:600; color:var(--text-muted); margin-bottom:0.3rem;">
+                            <span>MC Dropout Pass Scores (20 Samples)</span>
+                            <span id="perception-variance-val" style="font-family:var(--font-code); font-size:0.72rem; color:var(--text-muted);">Var: 0.0000</span>
+                        </div>
+                        <div id="mcdropout-dotplot-container" style="position:relative; width:100%; height:26px; background:rgba(0,0,0,0.5); border-radius:6px; border:1px solid var(--border-color); display:flex; align-items:center; padding: 0 4px; overflow:hidden;">
+                            <!-- Dots rendered dynamically via JS -->
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.68rem; color:var(--text-muted); margin-top:0.25rem;">
+                            <span>0.0</span>
+                            <span id="dotplot-spread-label" style="color:var(--text-muted);">Clustered = Consistent | Spread = Confused</span>
+                            <span>1.0</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- 5-Agent Visual Cards -->

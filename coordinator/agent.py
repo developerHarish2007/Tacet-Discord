@@ -156,6 +156,8 @@ class CoordinatorAgent:
             "perception": {
                 "score": percept_res.get("anomaly_score", 0.0) if percept_res else None,
                 "confidence": percept_res.get("mean_confidence", 0.0) if percept_res else None,
+                "variance": percept_res.get("variance", 0.0) if percept_res else None,
+                "dropout_pass_scores": percept_res.get("dropout_pass_scores", []) if percept_res else [],
                 "extracted_ocr": percept_res.get("extracted_text", "") if percept_res else "",
                 "summary": f"Perception: Score {percept_res['mean_confidence']:.2f}" if percept_res else "No image provided for visual scan"
             },

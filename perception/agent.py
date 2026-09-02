@@ -69,12 +69,13 @@ class PerceptionAgent:
         # Extract text from image via OCR
         ocr_text = self.extract_image_text(image_path)
 
-        mean_conf = round(float(results["anomaly_score"]), 4)
+        mean_conf = round(float(results["mean_confidence"]), 4)
 
         return {
             "anomaly_score": results["anomaly_score"],
             "mean_confidence": mean_conf,
             "variance": results["variance"],
+            "dropout_pass_scores": results.get("dropout_pass_scores", []),
             "heatmap_path": heatmap_rel_path,
             "extracted_text": ocr_text,
             "status": "success"

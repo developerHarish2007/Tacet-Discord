@@ -154,6 +154,7 @@ class PatchCoreAnomalyDetector:
 
             scores_arr = np.array(scores)
             norm_scores = np.clip(scores_arr / 1.5, 0.0, 1.0)
+            pass_confidences = [round(float(s), 4) for s in (1.0 - norm_scores)]
             avg_map = np.mean(np.array(spatial_maps), axis=0)
             avg_map = (avg_map - avg_map.min()) / (avg_map.max() - avg_map.min() + 1e-8)
 
@@ -161,6 +162,7 @@ class PatchCoreAnomalyDetector:
                 "anomaly_score": round(float(np.mean(norm_scores)), 4),
                 "mean_confidence": round(float(1.0 - np.mean(norm_scores)), 4),
                 "variance": round(float(np.var(norm_scores)), 6),
+                "dropout_pass_scores": pass_confidences,
                 "heatmap_matrix": avg_map
             }
 
@@ -188,6 +190,7 @@ class PatchCoreAnomalyDetector:
 
         scores_arr = np.array(scores)
         norm_scores = np.clip(scores_arr / 1.5, 0.0, 1.0)
+        pass_confidences = [round(float(s), 4) for s in (1.0 - norm_scores)]
         avg_map = np.mean(np.array(spatial_maps), axis=0)
         avg_map = (avg_map - avg_map.min()) / (avg_map.max() - avg_map.min() + 1e-8)
 
@@ -195,5 +198,6 @@ class PatchCoreAnomalyDetector:
             "anomaly_score": round(float(np.mean(norm_scores)), 4),
             "mean_confidence": round(float(1.0 - np.mean(norm_scores)), 4),
             "variance": round(float(np.var(norm_scores)), 6),
+            "dropout_pass_scores": pass_confidences,
             "heatmap_matrix": avg_map
         }

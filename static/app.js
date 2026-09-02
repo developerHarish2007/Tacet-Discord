@@ -279,6 +279,41 @@ document.addEventListener('DOMContentLoaded', () => {
         const ptrace = rtrace.perception || {};
         const mtrace = rtrace.memory || {};
 
+        // Render Perception Confidence Gauge & MC Dropout Dot Plot
+        const gaugeVal = document.getElementById('perception-gauge-val');
+        const gaugeFill = document.getElementById('perception-gauge-fill');
+        const varianceVal = document.getElementById('perception-variance-val');
+        const dotplotContainer = document.getElementById('mcdropout-dotplot-container');
+
+        const conf = ptrace.confidence !== null && ptrace.confidence !== undefined ? ptrace.confidence : 0.0;
+        const variance = ptrace.variance !== null && ptrace.variance !== undefined ? ptrace.variance : 0.0;
+        const passScores = ptrace.dropout_pass_scores || [];
+
+        if (gaugeVal) gaugeVal.textContent = conf.toFixed(4);
+        if (gaugeFill) {
+            const fillPct = Math.min(Math.max(conf * 100, 0), 100).toFixed(1);
+            gaugeFill.style.width = `${fillPct}%`;
+            gaugeFill.style.background = tier === 1 ? '#4ade80' : (tier === 2 ? '#fbbf24' : '#f87171');
+        }
+        if (varianceVal) varianceVal.textContent = `Var: ${variance.toFixed(6)}`;
+
+        if (dotplotContainer) {
+            dotplotContainer.innerHTML = '';
+            if (passScores.length > 0) {
+                passScores.forEach((score, idx) => {
+                    const dot = document.createElement('div');
+                    dot.className = 'mc-dot';
+                    const leftPct = Math.min(Math.max(score * 100, 2), 98).toFixed(1);
+                    dot.style.left = `${leftPct}%`;
+                    dot.style.background = tier === 1 ? '#4ade80' : (tier === 2 ? '#fbbf24' : '#f87171');
+                    dot.title = `Pass #${idx + 1}: Score ${score.toFixed(4)}`;
+                    dotplotContainer.appendChild(dot);
+                });
+            } else {
+                dotplotContainer.innerHTML = '<span style="font-size:0.7rem; color:var(--text-muted); margin:0 auto;">No dropout scores available</span>';
+            }
+        }
+
         const tracePerceptScore = document.getElementById('trace-percept-score');
         const tracePerceptConf = document.getElementById('trace-percept-conf');
         const tracePerceptOcr = document.getElementById('trace-percept-ocr');
