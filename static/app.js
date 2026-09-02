@@ -317,6 +317,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const tracePerceptScore = document.getElementById('trace-percept-score');
         const tracePerceptConf = document.getElementById('trace-percept-conf');
         const tracePerceptOcr = document.getElementById('trace-percept-ocr');
+        const traceCorrelMode = document.getElementById('trace-correl-mode');
+        const traceCorrelRul = document.getElementById('trace-correl-rul');
+        const traceCorrelTopfeat = document.getElementById('trace-correl-topfeat');
         const traceMemoryCount = document.getElementById('trace-memory-count');
         const traceMemorySim = document.getElementById('trace-memory-sim');
         const traceVerifierTier = document.getElementById('trace-verifier-tier');
@@ -326,8 +329,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const rawJsonPre = document.getElementById('jask-raw-json-trace');
         const drawerBadgeIndicator = document.getElementById('drawer-badge-indicator');
 
+        const ctrace = rtrace.correlation || {};
         if (tracePerceptScore) tracePerceptScore.textContent = ptrace.score !== null && ptrace.score !== undefined ? ptrace.score.toFixed(4) : 'N/A';
         if (tracePerceptConf) tracePerceptConf.textContent = ptrace.confidence !== null && ptrace.confidence !== undefined ? ptrace.confidence.toFixed(4) : 'N/A';
+        if (tracePerceptOcr) tracePerceptOcr.textContent = ptrace.extracted_ocr || 'None detected';
+
+        if (traceCorrelMode) {
+            traceCorrelMode.textContent = (ctrace.profile_key || 'normal').toUpperCase();
+            traceCorrelMode.style.color = ctrace.sensor_anomaly ? 'var(--accent-red)' : 'var(--accent-green)';
+        }
+        if (traceCorrelRul) traceCorrelRul.textContent = `${ctrace.predicted_rul_hours || 142.5} hrs`;
+        if (traceCorrelTopfeat) traceCorrelTopfeat.textContent = ctrace.top_contributing_feature || 'RMS Baseline';
+
+        // Render Correlation 60-Minute Telemetry Line Chart & RUL Marker
+        renderCorrelationChart(
+            ctrace.feature_timeseries,
+            ctrace.top_contributing_feature,
+            ctrace.predicted_rul_hours || 142.5,
+            ctrace.sensor_anomaly
+        );
         if (tracePerceptOcr) tracePerceptOcr.textContent = ptrace.extracted_ocr || 'None detected';
         if (traceMemoryCount) traceMemoryCount.textContent = mtrace.retrieved_count || 0;
         if (traceMemorySim) traceMemorySim.textContent = mtrace.top_similarity ? `${(mtrace.top_similarity * 100).toFixed(0)}%` : '0%';
@@ -349,6 +369,126 @@ document.addEventListener('DOMContentLoaded', () => {
             drawerBadgeIndicator.textContent = "UPDATED!";
             drawerBadgeIndicator.style.background = "#4ade80";
         }
+    }
+
+    // -------------------------------------------------------------
+    // RENDER CORRELATION 60-MIN TIMESERIES CANVAS LINE CHART
+    // -------------------------------------------------------------
+    function renderCorrelationChart(timeseriesData, topFeatureName, rulHours, isAnomaly) {
+        const canvas = document.getElementById('correl-timeseries-chart');
+        if (!canvas || !timeseriesData) return;
+
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+
+        const lowerTop = (topFeatureName || '').toLowerCase();
+        let defaultKey = 'rms';
+        if (lowerTop.includes('kurtosis')) defaultKey = 'kurtosis';
+        else if (lowerTop.includes('peak') || lowerTop.includes('p2p') || lowerTop.includes('amplitude')) defaultKey = 'peak_to_peak';
+        else if (lowerTop.includes('std')) defaultKey = 'std';
+
+        const btnContainer = document.getElementById('correl-feature-buttons');
+        const driverLabel = document.getElementById('chart-top-driver-label');
+        const rulLabel = document.getElementById('chart-rul-label');
+
+        if (rulLabel) rulLabel.textContent = `${rulHours}h`;
+        if (driverLabel) driverLabel.textContent = `⭐ Top SHAP Driver: ${topFeatureName || defaultKey.toUpperCase()}`;
+
+        function draw(featKey) {
+            const values = timeseriesData[featKey] || timeseriesData['rms'] || [];
+            if (values.length === 0) return;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const minVal = Math.min(...values);
+            const maxVal = Math.max(...values);
+            const range = (maxVal - minVal) || 1.0;
+
+            const padLeft = 28;
+            const padRight = 55;
+            const padTop = 15;
+            const padBottom = 20;
+
+            const graphW = width - padLeft - padRight;
+            const graphH = height - padTop - padBottom;
+
+            // Draw grid line
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padLeft, padTop + graphH / 2);
+            ctx.lineTo(padLeft + graphW, padTop + graphH / 2);
+            ctx.stroke();
+
+            // Draw historical timeseries line
+            ctx.beginPath();
+            values.forEach((v, i) => {
+                const x = padLeft + (i / (values.length - 1)) * graphW;
+                const normY = (v - minVal) / range;
+                const y = height - padBottom - normY * graphH;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+
+            ctx.strokeStyle = featKey === defaultKey ? '#fbbf24' : '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Last point of historical data
+            const lastX = padLeft + graphW;
+            const lastVal = values[values.length - 1];
+            const lastNormY = (lastVal - minVal) / range;
+            const lastY = height - padBottom - lastNormY * graphH;
+
+            // Dashed RUL Projection Line
+            const rulX = width - 15;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(rulX, lastY);
+            ctx.strokeStyle = isAnomaly ? '#f43f5e' : '#4ade80';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw RUL Prediction Point Marker
+            ctx.beginPath();
+            ctx.arc(rulX, lastY, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = isAnomaly ? '#f43f5e' : '#4ade80';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // RUL Value label above marker
+            ctx.fillStyle = isAnomaly ? '#f43f5e' : '#4ade80';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${rulHours}h`, width - 5, Math.max(lastY - 7, 10));
+
+            // Axis labels
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '8px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(maxVal.toFixed(2), 2, padTop + 5);
+            ctx.fillText(minVal.toFixed(2), 2, height - padBottom);
+        }
+
+        if (btnContainer) {
+            btnContainer.querySelectorAll('button').forEach(btn => {
+                const feat = btn.dataset.feat;
+                btn.classList.toggle('shap-top', feat === defaultKey);
+                btn.classList.toggle('active', feat === defaultKey);
+                btn.onclick = () => {
+                    btnContainer.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    draw(feat);
+                };
+            });
+        }
+
+        draw(defaultKey);
     }
 
     // -------------------------------------------------------------

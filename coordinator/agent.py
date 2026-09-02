@@ -151,6 +151,12 @@ class CoordinatorAgent:
             sim_pct = int(verify_junior_res["highest_similarity"] * 100)
             cross_modal_note = f"💡 Multi-Modal Alignment: Grounded primarily via text query match against Record #{rec_id} ({sim_pct}% similarity). Image scan generated spatial heatmap."
 
+        correl_res = self.verifier.correlation.correlate(
+            telemetry_mode=telemetry_mode,
+            perception_score=percept_res.get("mean_confidence") if percept_res else None,
+            file_path=image_path
+        )
+
         # Build reasoning trace including raw LLM output for Pipeline Trace tab
         reasoning_trace = {
             "perception": {
@@ -161,6 +167,7 @@ class CoordinatorAgent:
                 "extracted_ocr": percept_res.get("extracted_text", "") if percept_res else "",
                 "summary": f"Perception: Score {percept_res['mean_confidence']:.2f}" if percept_res else "No image provided for visual scan"
             },
+            "correlation": correl_res,
             "cross_modal_note": cross_modal_note,
             "memory": {
                 "retrieved_count": len(retrieved_records),

@@ -237,11 +237,38 @@
                     </div>
                 </div>
 
-                <div class="agent-trace-row">
-                    <div class="agent-num">2</div>
-                    <div class="agent-info">
-                        <strong>Correlation Agent</strong>
-                        <p>Telemetry: <span style="color:var(--accent-green);">Normal Baseline</span> | Predicted RUL: <span>142.5 hrs</span></p>
+                <div class="agent-trace-row" style="flex-direction:column; align-items:stretch;">
+                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                        <div class="agent-num">2</div>
+                        <div class="agent-info">
+                            <strong>Correlation Agent (Predictive Maintenance & SHAP)</strong>
+                            <p>Telemetry: <span id="trace-correl-mode" style="color:var(--accent-green);">Normal Baseline</span> | Predicted RUL: <span id="trace-correl-rul" style="color:var(--accent-blue); font-weight:700;">142.5 hrs</span></p>
+                            <p>Top SHAP Driver: <span id="trace-correl-topfeat" style="color:var(--accent-amber); font-weight:600;">RMS Baseline</span></p>
+                        </div>
+                    </div>
+
+                    <!-- 60-Minute Telemetry Trend & RUL Prediction Line Chart -->
+                    <div style="margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--border-color);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                            <span style="font-size:0.75rem; font-weight:600; color:var(--text-muted);">📈 60-Min Sensor Telemetry Trend</span>
+                            <!-- Feature Switcher Buttons -->
+                            <div id="correl-feature-buttons" style="display:flex; gap:0.25rem;">
+                                <button data-feat="rms" class="btn-xs active">RMS</button>
+                                <button data-feat="peak_to_peak" class="btn-xs">P2P</button>
+                                <button data-feat="kurtosis" class="btn-xs">Kurt</button>
+                                <button data-feat="std" class="btn-xs">Std</button>
+                            </div>
+                        </div>
+
+                        <!-- Canvas Line Chart -->
+                        <div style="position:relative; width:100%; height:90px; background:rgba(0,0,0,0.5); border-radius:6px; border:1px solid var(--border-color); overflow:hidden;">
+                            <canvas id="correl-timeseries-chart" width="400" height="90" style="width:100%; height:100%; display:block;"></canvas>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-muted); margin-top:0.25rem;">
+                            <span>Min 1 (Observed)</span>
+                            <span id="chart-top-driver-label" style="color:var(--accent-amber); font-weight:600;">⭐ Top SHAP Driver: RMS</span>
+                            <span>Min 60 ──► RUL: <strong id="chart-rul-label" style="color:var(--accent-blue);">142.5h</strong></span>
+                        </div>
                     </div>
                 </div>
 

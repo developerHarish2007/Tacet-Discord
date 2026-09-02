@@ -543,3 +543,31 @@ body {
     box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
     transition: left 0.3s ease;
 }
+
+.btn-xs {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.68rem;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+}
+
+.btn-xs:hover {
+    border-color: var(--accent-blue);
+    color: var(--text-main);
+}
+
+.btn-xs.active {
+    background: var(--accent-blue);
+    color: #ffffff;
+    border-color: var(--accent-blue);
+    font-weight: 600;
+}
+
+.btn-xs.shap-top {
+    border-color: var(--accent-amber);
+    box-shadow: 0 0 6px rgba(251, 191, 36, 0.5);
+}
