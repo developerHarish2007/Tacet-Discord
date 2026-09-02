@@ -929,6 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let analyserNode = null;
     let animFrameId = null;
 
+    const voiceRecTopRow = document.getElementById('voice-rec-top-row');
     const waveformWrapper = document.getElementById('audio-waveform-wrapper');
     const audioCanvas = document.getElementById('senior-audio-canvas');
 
@@ -939,27 +940,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const height = audioCanvas.height;
 
         const bufferLength = analyserNode.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
+        const freqArray = new Uint8Array(bufferLength);
+        const timeDomainArray = new Uint8Array(bufferLength);
 
         function renderFrame() {
             animFrameId = requestAnimationFrame(renderFrame);
-            analyserNode.getByteFrequencyData(dataArray);
+            analyserNode.getByteFrequencyData(freqArray);
+            analyserNode.getByteTimeDomainData(timeDomainArray);
 
             ctx.clearRect(0, 0, width, height);
 
             const barCount = 18;
-            const barWidth = 6;
+            const barWidth = 5;
             const gap = 5;
             const totalW = barCount * (barWidth + gap) - gap;
             const startX = (width - totalW) / 2;
 
             for (let i = 0; i < barCount; i++) {
                 const dataIdx = Math.floor((i / barCount) * (bufferLength * 0.75));
-                const value = dataArray[dataIdx] || 0;
-                
-                const minH = 6;
-                const maxH = height - 4;
-                const barH = Math.max(minH, (value / 255) * maxH);
+                const freqVal = freqArray[dataIdx] || 0;
+                const timeVal = Math.abs((timeDomainArray[dataIdx] || 128) - 128) * 3.5;
+                const voiceSignal = Math.max(freqVal, timeVal);
+
+                const baseline = 5 + Math.sin(Date.now() * 0.008 + i * 0.5) * 2;
+                const dynamicH = baseline + (voiceSignal / 255) * (height - 10);
+                const barH = Math.min(height - 4, dynamicH);
 
                 const x = startX + i * (barWidth + gap);
                 const y = (height - barH) / 2;
@@ -971,12 +976,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     ctx.rect(x, y, barWidth, barH);
                 }
 
-                if (value > 160) {
-                    ctx.fillStyle = 'var(--accent-red)';
-                } else if (value > 90) {
-                    ctx.fillStyle = 'var(--accent-amber)';
+                if (voiceSignal > 140) {
+                    ctx.fillStyle = '#ef4444';
+                } else if (voiceSignal > 70) {
+                    ctx.fillStyle = '#f59e0b';
                 } else {
-                    ctx.fillStyle = 'var(--accent)';
+                    ctx.fillStyle = '#6366f1';
                 }
                 ctx.fill();
             }
@@ -994,24 +999,33 @@ document.addEventListener('DOMContentLoaded', () => {
             audioCtx = null;
         }
         analyserNode = null;
-        if (waveformWrapper) waveformWrapper.style.display = 'none';
+        if (voiceRecTopRow) voiceRecTopRow.classList.remove('recording-active');
+        if (waveformWrapper) waveformWrapper.classList.remove('active');
     }
 
     if (seniorVoiceRecBtn) {
         seniorVoiceRecBtn.addEventListener('click', async () => {
             if (!mediaRecorder || mediaRecorder.state === 'inactive') {
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
                     mediaRecorder = new MediaRecorder(stream);
                     audioChunks = [];
 
                     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    await audioCtx.resume();
+
                     analyserNode = audioCtx.createAnalyser();
-                    analyserNode.fftSize = 64;
+                    analyserNode.fftSize = 128;
+                    analyserNode.smoothingTimeConstant = 0.7;
+                    analyserNode.minDecibels = -85;
+                    analyserNode.maxDecibels = -25;
+
                     const source = audioCtx.createMediaStreamSource(stream);
                     source.connect(analyserNode);
 
-                    if (waveformWrapper) waveformWrapper.style.display = 'flex';
+                    if (voiceRecTopRow) voiceRecTopRow.classList.add('recording-active');
+                    if (waveformWrapper) waveformWrapper.classList.add('active');
+
                     drawRealTimeAudioWaveform();
 
                     mediaRecorder.ondataavailable = (event) => {

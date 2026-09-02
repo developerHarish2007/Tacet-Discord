@@ -2260,8 +2260,19 @@ body {
 .voice-rec-top-row {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.9rem;
-    flex-wrap: wrap;
+    position: relative;
+    min-height: 44px;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.voice-rec-top-row.recording-active {
+    justify-content: flex-start;
+}
+
+#senior-voice-rec-btn {
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .audio-waveform-wrapper {
@@ -2269,11 +2280,27 @@ body {
     align-items: center;
     gap: 0.6rem;
     background: var(--bg-deep);
-    border: 1px solid var(--accent);
+    border: 1.5px solid var(--accent);
     border-radius: var(--radius-pill);
-    padding: 0.25rem 0.8rem 0.25rem 0.6rem;
-    box-shadow: 0 0 16px var(--accent-glow);
-    animation: blurFadeIn 0.3s ease both;
+    padding: 0;
+    max-width: 0;
+    opacity: 0;
+    transform: scale(0.85) translateX(15px);
+    overflow: hidden;
+    pointer-events: none;
+    box-shadow: 0 0 20px var(--accent-glow);
+    transition: max-width 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                opacity 0.3s ease, 
+                transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), 
+                padding 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.audio-waveform-wrapper.active {
+    max-width: 320px;
+    opacity: 1;
+    padding: 0.25rem 0.85rem 0.25rem 0.65rem;
+    transform: scale(1) translateX(0);
+    pointer-events: auto;
 }
 
 #senior-audio-canvas {
