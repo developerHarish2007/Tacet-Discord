@@ -130,7 +130,7 @@ class GroundedLLMReasoningEngine:
                 "stream": False
             }
             req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=60) as resp:
+            with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode('utf-8'))
                 ans = data.get("response", "").strip()
                 if ans:
