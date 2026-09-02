@@ -2245,11 +2245,11 @@ body {
 .voice-recorder-container {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.5rem;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: 0.85rem 1rem;
+    padding: 0.6rem 0.8rem;
     transition: border-color 0.25s ease;
 }
 
@@ -2261,9 +2261,9 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.9rem;
+    gap: 0.8rem;
     position: relative;
-    min-height: 44px;
+    min-height: 38px;
     transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -2278,7 +2278,7 @@ body {
 .audio-waveform-wrapper {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.55rem;
     background: var(--bg-deep);
     border: 1.5px solid var(--accent);
     border-radius: var(--radius-pill);
@@ -2298,19 +2298,19 @@ body {
 .audio-waveform-wrapper.active {
     max-width: 320px;
     opacity: 1;
-    padding: 0.25rem 0.85rem 0.25rem 0.65rem;
+    padding: 0.2rem 0.75rem 0.2rem 0.55rem;
     transform: scale(1) translateX(0);
     pointer-events: auto;
 }
 
 #senior-audio-canvas {
-    width: 220px;
-    height: 36px;
+    width: 210px;
+    height: 32px;
     border-radius: var(--radius-pill);
 }
 
 .rec-dot-live {
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     font-weight: 800;
     color: var(--accent-red);
     font-family: var(--font-mono);
@@ -2321,13 +2321,13 @@ body {
 .voice-file-row {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: 0.2rem;
     border-top: 1px dashed var(--border);
-    padding-top: 0.65rem;
+    padding-top: 0.45rem;
 }
 
 .voice-file-label {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 600;
     color: var(--foreground-subtle);
 }
